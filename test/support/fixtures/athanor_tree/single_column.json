@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "title": "Single Column Layout",
+    "description": "",
+    "image": ""
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000020",
+      "type": "columns",
+      "props": {
+        "zone_names": ["one", "two"],
+        "zones": {
+          "one": [
+            {
+              "id": "00000000-0000-0000-0000-000000000021",
+              "type": "text",
+              "props": {
+                "text": "<p>Left side</p>"
+              }
+            }
+          ],
+          "two": []
+        },
+        "width_distribution": "equal",
+        "vertical_align": "top"
+      }
+    }
+  ]
+}

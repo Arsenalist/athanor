@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "title": "About Us",
+    "description": "A short intro page",
+    "image": ""
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "type": "text",
+      "props": {
+        "text": "<p>Welcome to our event series.</p>"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "type": "text",
+      "props": {
+        "text": "<p>We host monthly comedy nights.</p>"
+      }
+    }
+  ]
+}

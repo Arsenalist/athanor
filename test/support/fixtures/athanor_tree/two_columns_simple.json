@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "title": "Two Column Page",
+    "description": "Side by side content",
+    "image": ""
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000030",
+      "type": "columns",
+      "props": {
+        "zone_names": ["one", "two"],
+        "zones": {
+          "one": [
+            {
+              "id": "00000000-0000-0000-0000-000000000031",
+              "type": "text",
+              "props": {
+                "text": "<p>Left</p>"
+              }
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000032",
+              "type": "text",
+              "props": {
+                "text": "<p>Also left</p>"
+              }
+            }
+          ],
+          "two": [
+            {
+              "id": "00000000-0000-0000-0000-000000000033",
+              "type": "image_config",
+              "props": {
+                "src": "https://cdn.example.com/right.jpg"
+              }
+            }
+          ]
+        },
+        "width_distribution": "66-33",
+        "vertical_align": "center"
+      }
+    }
+  ]
+}

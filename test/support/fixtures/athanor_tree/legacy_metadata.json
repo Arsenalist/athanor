@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "title": "Old Page",
+    "description": "Missing share image, extra unknown key",
+    "image": null,
+    "deprecated_meta_field": "ignore-me-but-preserve-on-roundtrip"
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000050",
+      "type": "text",
+      "props": {
+        "text": "<p>Legacy row</p>",
+        "unknown_legacy_prop": "preserved"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000051",
+      "type": "social_links",
+      "props": {
+        "links": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "metadata": {
+    "title": "Nested Columns",
+    "description": "Columns inside columns",
+    "image": ""
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000040",
+      "type": "text",
+      "props": {
+        "text": "<p>Heading row</p>"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000041",
+      "type": "columns",
+      "props": {
+        "zone_names": ["one", "two"],
+        "zones": {
+          "one": [
+            {
+              "id": "00000000-0000-0000-0000-000000000042",
+              "type": "text",
+              "props": {
+                "text": "<p>Outer left</p>"
+              }
+            }
+          ],
+          "two": [
+            {
+              "id": "00000000-0000-0000-0000-000000000043",
+              "type": "columns",
+              "props": {
+                "zone_names": ["one", "two", "three"],
+                "zones": {
+                  "one": [
+                    {
+                      "id": "00000000-0000-0000-0000-000000000044",
+                      "type": "text",
+                      "props": {
+                        "text": "<p>Inner 1</p>"
+                      }
+                    }
+                  ],
+                  "two": [
+                    {
+                      "id": "00000000-0000-0000-0000-000000000045",
+                      "type": "text",
+                      "props": {
+                        "text": "<p>Inner 2</p>"
+                      }
+                    }
+                  ],
+                  "three": [
+                    {
+                      "id": "00000000-0000-0000-0000-000000000046",
+                      "type": "hero",
+                      "props": {
+                        "title": "Deep hero",
+                        "text": "very nested",
+                        "image": "https://cdn.example.com/deep.jpg"
+                      }
+                    }
+                  ]
+                },
+                "width_distribution": "equal",
+                "vertical_align": "top"
+              }
+            }
+          ]
+        },
+        "width_distribution": "equal",
+        "vertical_align": "top"
+      }
+    }
+  ]
+}

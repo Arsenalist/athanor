@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "title": "Featured Show",
+    "description": "Tonight's headliner",
+    "image": "https://cdn.example.com/share.jpg"
+  },
+  "content": [
+    {
+      "id": "00000000-0000-0000-0000-000000000010",
+      "type": "hero",
+      "props": {
+        "title": "Comedy Night",
+        "text": "Doors at 7pm",
+        "image": "https://cdn.example.com/hero.jpg",
+        "formatting": {
+          "padding": "lg",
+          "background_color": "#111111"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000011",
+      "type": "image_config",
+      "props": {
+        "src": "https://cdn.example.com/poster.jpg",
+        "alt": "Poster"
+      }
+    }
+  ]
+}
