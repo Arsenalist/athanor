@@ -1,0 +1,150 @@
+defmodule Athanor.Renderer do
+  @moduledoc """
+  Unified render dispatch over an `Athanor.Tree`.
+
+  Iterates `tree["content"]`. For each node:
+
+  1. Resolves the component module via `Athanor.Registry.lookup/1`.
+  2. If the module exports `render/3` (new `Athanor.Component` path), calls
+     `module.render(:live, node, ctx)`.
+  3. Otherwise dispatches via the configured `:legacy_adapter` — see
+     `Application.put_env(:athanor, :legacy_adapter, {Mod, :fun})`. The
+     adapter receives `(component_module, assigns)` and returns renderable
+     HEEx, which is embedded inline.
+  4. For legacy modules implementing `has_required_props?/1`, the node is
+     SKIPPED entirely (no output) when `edit_mode=false` and required props
+     are missing — matching the storefront's pre-Athanor behaviour.
+  5. If the type cannot be resolved at all, renders an inline developer
+     placeholder. Does NOT crash the parent LiveView.
+
+  Both editor-canvas and storefront-page call sites converge here, so a
+  per-component cutover only needs to change the component module — the
+  dispatch logic is shared.
+  """
+
+  use Phoenix.Component
+
+  alias Athanor.Registry
+
+  attr(:tree, :map, required: true, doc: "An `Athanor.Tree`-shaped map: %{\"content\" => [...]}")
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:edit_mode, :boolean, default: false)
+  attr(:show_config, :boolean, default: false)
+  attr(:selected_component_id, :string, default: nil)
+
+  @doc """
+  Render every root node in the tree.
+
+  Output mirrors the pre-Athanor storefront renderer layout: a single
+  `flex flex-col gap-4` wrapper, with each node's rendered output directly
+  inside (no per-node wrapping div).
+  """
+  def tree(assigns) do
+    nodes = (assigns.tree || %{}) |> Map.get("content", []) |> List.wrap()
+    assigns = assign(assigns, :nodes, nodes)
+
+    ~H"""
+    <div class="flex flex-col gap-4">
+      <.node_component
+        :for={node <- @nodes}
+        node={node}
+        ctx={@ctx}
+        edit_mode={@edit_mode}
+        show_config={@show_config}
+        selected_component_id={@selected_component_id}
+      />
+    </div>
+    """
+  end
+
+  attr(:node, :map, required: true)
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:edit_mode, :boolean, default: false)
+  attr(:show_config, :boolean, default: false)
+  attr(:selected_component_id, :string, default: nil)
+
+  @doc """
+  Render a single node. Named `node_component` to avoid colliding with
+  `Kernel.node/1`.
+  """
+  def node_component(assigns) do
+    module = Registry.lookup(assigns.node["type"])
+    assigns = assign(assigns, :module, module)
+
+    cond do
+      is_nil(module) ->
+        unknown_type(assigns)
+
+      skipped_legacy?(module, assigns) ->
+        empty(assigns)
+
+      function_exported?(module, :render, 3) ->
+        new_path(assigns)
+
+      true ->
+        legacy_path(assigns)
+    end
+  end
+
+  defp skipped_legacy?(module, %{edit_mode: false} = assigns) do
+    # Legacy `has_required_props?/1` is documented to return a boolean,
+    # but several existing impls return truthy non-booleans (e.g. an integer
+    # id via `props["a"] && props["b"]`). The pre-Athanor renderer used
+    # `if`/`unless`, which accepts any truthy/falsy. Use `!` here to preserve
+    # that tolerance rather than crashing on `not 6`.
+    function_exported?(module, :has_required_props?, 1) and
+      !module.has_required_props?(assigns.node["props"])
+  end
+
+  defp skipped_legacy?(_module, _assigns), do: false
+
+  defp empty(assigns) do
+    ~H""
+  end
+
+  defp new_path(assigns) do
+    rendered = assigns.module.render(:live, assigns.node, assigns.ctx)
+    assigns = assign(assigns, :rendered, rendered)
+
+    ~H"""
+    {@rendered}
+    """
+  end
+
+  defp legacy_path(assigns) do
+    case Application.get_env(:athanor, :legacy_adapter) do
+      nil ->
+        unimplemented_legacy(assigns)
+
+      {mod, fun} ->
+        rendered = apply(mod, fun, [assigns.module, assigns])
+        assigns = assign(assigns, :rendered, rendered)
+
+        ~H"""
+        {@rendered}
+        """
+    end
+  end
+
+  defp unknown_type(assigns) do
+    ~H"""
+    <div
+      data-athanor-unknown-type={@node["type"]}
+      style="padding: 0.5rem; border: 1px dashed #c00; color: #c00;"
+    >
+      Unknown component type: {@node["type"]}
+    </div>
+    """
+  end
+
+  defp unimplemented_legacy(assigns) do
+    ~H"""
+    <div
+      data-athanor-legacy-unwired={@node["type"]}
+      style="padding: 0.5rem; border: 1px dashed #c80; color: #c80;"
+    >
+      Legacy component '{@node["type"]}' resolved but no :legacy_adapter configured.
+    </div>
+    """
+  end
+end

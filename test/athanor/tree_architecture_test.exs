@@ -17,15 +17,19 @@ defmodule Athanor.TreeArchitectureTest do
   ]
 
   describe "mix.exs deps boundary" do
+    # The hard rule: no host-app coupling, no DB, no JSON encoding lib.
+    # Phoenix LiveView (and its transitive :phoenix, :phoenix_html, etc.) is
+    # allowed because Athanor.Renderer is a function component that uses the
+    # ~H sigil. Phoenix as a framework is fine; Amplify as an app is not.
     test "Athanor.MixProject declares zero forbidden runtime dependencies" do
       deps = Athanor.MixProject.project()[:deps] || []
       dep_names = Enum.map(deps, &elem(&1, 0))
-      forbidden = [:amplify, :phoenix, :phoenix_live_view, :ecto_sql, :jason]
+      forbidden = [:amplify, :ecto_sql, :jason]
       offenders = Enum.filter(dep_names, &(&1 in forbidden))
 
       assert offenders == [],
              "athanor/mix.exs must not depend on: #{inspect(offenders)}.\n" <>
-               "Athanor is host-agnostic — no Amplify, Phoenix, Ecto, Jason deps allowed."
+               "Athanor is host-agnostic — no Amplify, Ecto, Jason deps allowed."
     end
   end
 
