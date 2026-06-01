@@ -78,12 +78,53 @@ defmodule Athanor.Renderer do
       skipped_legacy?(module, assigns) ->
         empty(assigns)
 
+      editor_form_for(module, assigns) ->
+        editor_form_path(assigns)
+
       function_exported?(module, :render, 3) ->
         new_path(assigns)
 
       true ->
         legacy_path(assigns)
     end
+  end
+
+  # Returns the editor_form module if applicable for the current dispatch
+  # mode (edit_mode + show_config + module exports editor_form/0 + result is
+  # non-nil); otherwise nil.
+  defp editor_form_for(module, %{edit_mode: true, show_config: true}) do
+    if function_exported?(module, :editor_form, 0) do
+      case module.editor_form() do
+        nil -> nil
+        form_module -> form_module
+      end
+    end
+  end
+
+  defp editor_form_for(_module, _assigns), do: nil
+
+  defp editor_form_path(assigns) do
+    form_module = editor_form_for(assigns.module, assigns)
+
+    assigns =
+      assign(assigns,
+        form_module: form_module,
+        lc_id: "athanor-editor-form-" <> assigns.node["id"]
+      )
+
+    ~H"""
+    <.live_component
+      module={@form_module}
+      id={@lc_id}
+      component_id={@node["id"]}
+      props={@node["props"]}
+      ctx={@ctx}
+      account_id={@ctx.account_id}
+      brand_id={@ctx.brand_id}
+      user_id={@ctx.user_id}
+      api_token={@ctx.api_token}
+    />
+    """
   end
 
   defp skipped_legacy?(module, %{edit_mode: false} = assigns) do

@@ -44,4 +44,49 @@ defmodule Athanor.Test.FakeComponents do
       Phoenix.HTML.raw(~s(<div data-legacy-truthy="rendered"></div>))
     end
   end
+
+  # Used by renderer_editor_form_test.exs to exercise the editor-form
+  # dispatch path. Implements both render/3 (preview/storefront) and
+  # editor_form/0 (config panel).
+  defmodule EditorFormFakeLC do
+    use Phoenix.LiveComponent
+
+    @impl true
+    def render(assigns) do
+      ~H"""
+      <div data-editor-form-fake-lc={@component_id}>edit panel</div>
+      """
+    end
+  end
+
+  defmodule EditorFormFake do
+    use Athanor.Component
+
+    @impl Athanor.Component
+    def metadata, do: %{type: "fake_editor_form", label: "EditorFormFake"}
+
+    @impl Athanor.Component
+    def render(:live, node, _ctx) do
+      Phoenix.HTML.raw(~s(<div data-preview="#{node["id"]}">preview</div>))
+    end
+
+    @impl Athanor.Component
+    def editor_form, do: EditorFormFakeLC
+  end
+
+  defmodule NoEditorFormFake do
+    use Athanor.Component
+
+    @impl Athanor.Component
+    def metadata, do: %{type: "fake_no_editor_form", label: "NoEditorFormFake"}
+
+    @impl Athanor.Component
+    def render(:live, node, _ctx) do
+      Phoenix.HTML.raw(~s(<div data-no-form="#{node["id"]}">no form</div>))
+    end
+
+    # editor_form/0 explicitly returns nil → renderer should fall through to render/3.
+    @impl Athanor.Component
+    def editor_form, do: nil
+  end
 end

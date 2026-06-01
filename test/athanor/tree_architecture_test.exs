@@ -3,6 +3,14 @@ defmodule Athanor.TreeArchitectureTest do
 
   @tree_source Path.expand("../../lib/athanor/tree.ex", __DIR__)
 
+  # Files allowed to reference AmplifyWeb modules. The Text component is a
+  # documented exception: it bridges editing to the legacy
+  # AmplifyWeb.PageBuilder.Components.Text LC via `editor_form/0` until the
+  # rich-text + asset adapters land (Step 5). See the component's @moduledoc.
+  @amplify_web_exceptions [
+    Path.expand("../../lib/athanor/components/text.ex", __DIR__)
+  ]
+
   @forbidden_aliases [
     "alias Amplify",
     "alias AmplifyWeb",
@@ -42,6 +50,26 @@ defmodule Athanor.TreeArchitectureTest do
                "lib/athanor/tree.ex must not contain `#{needle}`.\n" <>
                  "Athanor.Tree is pure-data; encoding is the caller's responsibility."
       end
+    end
+  end
+
+  describe "Athanor library AmplifyWeb boundary" do
+    test "no lib/athanor/**/*.ex file references AmplifyWeb except documented exceptions" do
+      lib_root = Path.expand("../../lib/athanor", __DIR__)
+
+      offenders =
+        Path.wildcard(Path.join(lib_root, "**/*.ex"))
+        |> Enum.reject(&(&1 in @amplify_web_exceptions))
+        |> Enum.filter(fn path ->
+          source = File.read!(path)
+          String.contains?(source, "AmplifyWeb")
+        end)
+
+      assert offenders == [],
+             "These Athanor lib files reference AmplifyWeb without being in the\n" <>
+               "documented exception list — add to @amplify_web_exceptions only when there is\n" <>
+               "no other way:\n" <>
+               Enum.map_join(offenders, "\n", &"  - #{Path.relative_to(&1, File.cwd!())}")
     end
   end
 

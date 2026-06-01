@@ -48,6 +48,15 @@ defmodule Athanor.Registry do
     Application.get_env(:athanor, :components, [])
   end
 
+  @doc """
+  Return a flat list of `metadata/0` maps for every registered Athanor
+  component. Convenient for editor palettes and similar UI surfaces that
+  want to iterate components by display info.
+  """
+  def components_metadata do
+    Enum.map(all(), fn mod -> mod.metadata() end)
+  end
+
   defp fallback(type) do
     case Application.get_env(:athanor, :fallback_resolver) do
       nil -> nil

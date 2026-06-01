@@ -86,6 +86,36 @@ defmodule Athanor.RegistryTest do
     end
   end
 
+  describe "components_metadata/0" do
+    test "returns metadata for each registered module" do
+      set_components([Minimal, Required])
+
+      metas = Registry.components_metadata()
+      types = Enum.map(metas, & &1.type)
+
+      assert "fake_minimal" in types
+      assert "fake_required" in types
+    end
+
+    test "no duplicate types in a normal registration" do
+      set_components([Minimal, Required])
+
+      types = Registry.components_metadata() |> Enum.map(& &1.type)
+      assert types == Enum.uniq(types)
+    end
+
+    test "detects duplicates when present (programmer error)" do
+      # If two components ever claim the same type, lookup returns the
+      # first silently. The audit should catch it.
+      set_components([Minimal, Minimal])
+
+      types = Registry.components_metadata() |> Enum.map(& &1.type)
+      duplicates = types -- Enum.uniq(types)
+
+      refute duplicates == [], "audit should detect duplicates when registry has them"
+    end
+  end
+
   describe "all/0" do
     test "returns the configured component module list" do
       set_components([Minimal, Required, WithRender])
