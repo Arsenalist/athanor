@@ -40,7 +40,7 @@ defmodule Athanor.Test.FakeComponents do
       props["account_id"] && props["brand_id"]
     end
 
-    def render_public(assigns) do
+    def render_public(_assigns) do
       Phoenix.HTML.raw(~s(<div data-legacy-truthy="rendered"></div>))
     end
   end
