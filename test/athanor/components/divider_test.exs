@@ -64,8 +64,23 @@ defmodule Athanor.Components.DividerTest do
              }
     end
 
-    test "editor_form returns the form module" do
-      assert Divider.editor_form() == Athanor.Components.Divider.EditorForm
+    test "fields/0 declares thickness/color/margin_y" do
+      fields = Divider.fields()
+      keys = Enum.map(fields, fn {k, _t, _o} -> k end)
+      assert keys == ["thickness", "color", "margin_y"]
+
+      assert {"thickness", :number, opts1} = Enum.at(fields, 0)
+      assert opts1[:min] == 0
+      assert opts1[:max] == 16
+
+      assert {"color", :color, _} = Enum.at(fields, 1)
+
+      assert {"margin_y", :select, opts3} = Enum.at(fields, 2)
+      assert length(opts3[:options]) == 3
+    end
+
+    test "editor_form/0 returns nil (legacy callback no longer overridden)" do
+      assert Divider.editor_form() == nil
     end
 
     test "metadata category is :layout" do

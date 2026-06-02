@@ -50,7 +50,26 @@ defmodule Athanor.Components.Button do
   def required_props, do: ["label", "href"]
 
   @impl Athanor.Component
-  def editor_form, do: Athanor.Components.Button.EditorForm
+  def fields do
+    [
+      {"label", :text, label: "Label"},
+      {"href", :text, label: "URL"},
+      {"variant", :select,
+       label: "Variant",
+       options: [{"Primary", "primary"}, {"Secondary", "secondary"}, {"Ghost", "ghost"}]},
+      {"size", :select,
+       label: "Size", options: [{"SM", "sm"}, {"MD", "md"}, {"LG", "lg"}]},
+      {"target", :select,
+       label: "Target",
+       options: [
+         {"_self", "_self"},
+         {"_blank", "_blank"},
+         {"_parent", "_parent"},
+         {"_top", "_top"}
+       ]},
+      {"rel", :text, label: "Rel"}
+    ]
+  end
 
   @impl Athanor.Component
   def render(:live, node, _ctx) do

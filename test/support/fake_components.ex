@@ -89,4 +89,40 @@ defmodule Athanor.Test.FakeComponents do
     @impl Athanor.Component
     def editor_form, do: nil
   end
+
+  # Used to exercise the Phase 4 3-way dispatch.
+
+  defmodule FieldsOnlyFake do
+    use Athanor.Component
+
+    @impl Athanor.Component
+    def metadata, do: %{type: "fake_fields_only", label: "FieldsOnly"}
+
+    @impl Athanor.Component
+    def render(:live, node, _ctx) do
+      Phoenix.HTML.raw(~s(<div data-fields-only-preview="#{node["id"]}">preview</div>))
+    end
+
+    @impl Athanor.Component
+    def fields, do: [{"title", :text, label: "Title"}]
+  end
+
+  defmodule FieldsAndEditorFormFake do
+    use Athanor.Component
+
+    @impl Athanor.Component
+    def metadata, do: %{type: "fake_fields_and_editor_form", label: "Both"}
+
+    @impl Athanor.Component
+    def render(:live, node, _ctx) do
+      Phoenix.HTML.raw(~s(<div data-both-preview="#{node["id"]}">preview</div>))
+    end
+
+    # Both implemented — Renderer SHALL prefer fields/0 in config mode.
+    @impl Athanor.Component
+    def fields, do: [{"title", :text, label: "Title"}]
+
+    @impl Athanor.Component
+    def editor_form, do: EditorFormFakeLC
+  end
 end

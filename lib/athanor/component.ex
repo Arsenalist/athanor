@@ -28,11 +28,36 @@ defmodule Athanor.Component do
   Only `:live` is supported in v1. Future steps add `:static`, `:mjml`, `:text`
   without breaking the callback signature.
 
-  ## Editor form
+  ## Editor configuration: two ways
 
-  Components that need a configuration UI return a `Phoenix.LiveComponent`
-  module from `editor_form/0`. The editor LiveView mounts that LC in the
-  config panel. Components without an editor form return `nil`.
+  Components describe how they are edited in one of two ways.
+
+  ### Preferred: `fields/0` (declarative)
+
+  Return a list of field tuples describing inputs. Athanor auto-generates
+  the configure panel.
+
+      def fields, do: [
+        {"title", :text,     label: "Title"},
+        {"level", :select,   label: "Level", options: [{"H1", "1"}, {"H2", "2"}]},
+        {"image", :custom,   label: "Image", module: MyApp.MediaPicker}
+      ]
+
+  Built-in types: `:text`, `:textarea`, `:number`, `:select`, `:color`,
+  `:checkbox`. The `:custom` type mounts a consumer-supplied module
+  implementing `Athanor.Field`. See `Athanor.Field` and `Athanor.Fields`.
+
+  ### Legacy: `editor_form/0` (LiveComponent)
+
+  Return a `Phoenix.LiveComponent` module the editor mounts directly.
+  Use this when you need state, multi-step flows, or behaviour the
+  built-in field types don't cover. Return `nil` (default) for no
+  configuration.
+
+  ### Dispatch order
+
+  When both are defined, `fields/0` (returning a non-empty list) wins.
+  See `Athanor.Renderer` for the full dispatch rules.
 
   ## Child zones
 
@@ -54,10 +79,14 @@ defmodule Athanor.Component do
               optional(:placeholder) => String.t()
             }
 
+  @type field_type :: :text | :textarea | :number | :select | :color | :checkbox | :custom
+  @type field :: {String.t(), field_type(), keyword()}
+
   @callback default_props() :: props()
   @callback required_props() :: [String.t()]
   @callback validate(props()) :: :ok | {:error, term()}
   @callback render(target(), tree_node(), Athanor.Ctx.t()) :: any()
+  @callback fields() :: [field()]
   @callback editor_form() :: module() | nil
   @callback child_zones(tree_node()) :: %{String.t() => [tree_node()]}
 
@@ -66,6 +95,7 @@ defmodule Athanor.Component do
     required_props: 0,
     validate: 1,
     render: 3,
+    fields: 0,
     editor_form: 0,
     child_zones: 1
   ]
@@ -101,6 +131,9 @@ defmodule Athanor.Component do
         do: Athanor.Component.default_validate(props, required_props())
 
       @impl Athanor.Component
+      def fields, do: []
+
+      @impl Athanor.Component
       def editor_form, do: nil
 
       @impl Athanor.Component
@@ -109,6 +142,7 @@ defmodule Athanor.Component do
       defoverridable default_props: 0,
                      required_props: 0,
                      validate: 1,
+                     fields: 0,
                      editor_form: 0,
                      child_zones: 1
     end

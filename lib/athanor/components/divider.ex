@@ -38,7 +38,14 @@ defmodule Athanor.Components.Divider do
   def required_props, do: []
 
   @impl Athanor.Component
-  def editor_form, do: Athanor.Components.Divider.EditorForm
+  def fields do
+    [
+      {"thickness", :number, label: "Thickness (px)", min: 0, max: 16},
+      {"color", :color, label: "Color"},
+      {"margin_y", :select,
+       label: "Vertical margin", options: [{"SM", "sm"}, {"MD", "md"}, {"LG", "lg"}]}
+    ]
+  end
 
   @impl Athanor.Component
   def render(:live, node, _ctx) do

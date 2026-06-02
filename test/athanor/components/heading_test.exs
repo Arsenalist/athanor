@@ -83,8 +83,20 @@ defmodule Athanor.Components.HeadingTest do
       assert Heading.required_props() == ["text"]
     end
 
-    test "editor_form returns the form module" do
-      assert Heading.editor_form() == Athanor.Components.Heading.EditorForm
+    test "fields/0 declares text + level select" do
+      fields = Heading.fields()
+      assert length(fields) == 2
+
+      assert {"text", :text, opts1} = Enum.at(fields, 0)
+      assert opts1[:label] == "Text"
+
+      assert {"level", :select, opts2} = Enum.at(fields, 1)
+      assert opts2[:label] == "Level"
+      assert opts2[:options] |> length() == 6
+    end
+
+    test "editor_form/0 returns nil (legacy callback no longer overridden)" do
+      assert Heading.editor_form() == nil
     end
 
     test "metadata shape" do

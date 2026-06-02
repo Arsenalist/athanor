@@ -76,8 +76,17 @@ defmodule Athanor.Components.ButtonTest do
       assert Button.required_props() == ["label", "href"]
     end
 
-    test "editor_form returns the form module" do
-      assert Button.editor_form() == Athanor.Components.Button.EditorForm
+    test "fields/0 declares label/href/variant/size/target/rel" do
+      fields = Button.fields()
+      keys = Enum.map(fields, fn {k, _t, _o} -> k end)
+      assert keys == ["label", "href", "variant", "size", "target", "rel"]
+
+      assert {"variant", :select, opts} = Enum.find(fields, &match?({"variant", _, _}, &1))
+      assert length(opts[:options]) == 3
+    end
+
+    test "editor_form/0 returns nil (legacy callback no longer overridden)" do
+      assert Button.editor_form() == nil
     end
 
     test "metadata type/label" do

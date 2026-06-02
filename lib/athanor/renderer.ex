@@ -78,6 +78,9 @@ defmodule Athanor.Renderer do
       skipped_legacy?(module, assigns) ->
         empty(assigns)
 
+      has_fields?(module, assigns) ->
+        fields_path(assigns)
+
       editor_form_for(module, assigns) ->
         editor_form_path(assigns)
 
@@ -87,6 +90,33 @@ defmodule Athanor.Renderer do
       true ->
         legacy_path(assigns)
     end
+  end
+
+  # New-path detection for fields/0. Only fires in config mode. Empty list
+  # (the default injected by `use Athanor.Component`) is treated as "no
+  # fields declared" so legacy components keep flowing through editor_form/0.
+  defp has_fields?(module, %{edit_mode: true, show_config: true}) do
+    function_exported?(module, :fields, 0) and module.fields() != []
+  end
+
+  defp has_fields?(_module, _assigns), do: false
+
+  defp fields_path(assigns) do
+    assigns =
+      assigns
+      |> assign(:lc_id, "athanor-auto-form-" <> assigns.node["id"])
+      |> assign(:component_module, assigns.module)
+
+    ~H"""
+    <.live_component
+      module={Athanor.AutoEditorForm}
+      id={@lc_id}
+      component_id={@node["id"]}
+      component_module={@component_module}
+      props={@node["props"]}
+      ctx={@ctx}
+    />
+    """
   end
 
   # Returns the editor_form module if applicable for the current dispatch
@@ -128,16 +158,43 @@ defmodule Athanor.Renderer do
   end
 
   defp skipped_legacy?(module, %{edit_mode: false} = assigns) do
-    # Legacy `has_required_props?/1` is documented to return a boolean,
-    # but several existing impls return truthy non-booleans (e.g. an integer
-    # id via `props["a"] && props["b"]`). The pre-Athanor renderer used
-    # `if`/`unless`, which accepts any truthy/falsy. Use `!` here to preserve
-    # that tolerance rather than crashing on `not 6`.
+    skipped_by_legacy?(module, assigns) or skipped_by_athanor_validate?(module, assigns)
+  end
+
+  defp skipped_legacy?(_module, _assigns), do: false
+
+  # Legacy `has_required_props?/1` is documented to return a boolean,
+  # but several existing impls return truthy non-booleans (e.g. an integer
+  # id via `props["a"] && props["b"]`). The pre-Athanor renderer used
+  # `if`/`unless`, which accepts any truthy/falsy. Use `!` here to preserve
+  # that tolerance rather than crashing on `not 6`.
+  defp skipped_by_legacy?(module, assigns) do
     function_exported?(module, :has_required_props?, 1) and
       !module.has_required_props?(assigns.node["props"])
   end
 
-  defp skipped_legacy?(_module, _assigns), do: false
+  # Athanor components implement `validate/1`. Storefront skips when
+  # validation fails (mirrors the legacy skip-when-missing-required behavior).
+  # Gated on the module actually implementing `Athanor.Component`, because
+  # some legacy components also expose a `validate/1` with a different
+  # contract (e.g. `Columns.validate/1` returns `{:ok, props}` on success).
+  defp skipped_by_athanor_validate?(module, assigns) do
+    implements_athanor_component?(module) and
+      function_exported?(module, :validate, 1) and
+      module.validate(assigns.node["props"] || %{}) != :ok
+  end
+
+  defp implements_athanor_component?(module) do
+    case module.module_info(:attributes) do
+      attrs when is_list(attrs) ->
+        Athanor.Component in Keyword.get(attrs, :behaviour, [])
+
+      _ ->
+        false
+    end
+  rescue
+    _ -> false
+  end
 
   defp empty(assigns) do
     ~H""

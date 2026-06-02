@@ -34,7 +34,14 @@ defmodule Athanor.Components.Heading do
   def required_props, do: ["text"]
 
   @impl Athanor.Component
-  def editor_form, do: Athanor.Components.Heading.EditorForm
+  def fields do
+    [
+      {"text", :text, label: "Text"},
+      {"level", :select,
+       label: "Level",
+       options: [{"H1", "1"}, {"H2", "2"}, {"H3", "3"}, {"H4", "4"}, {"H5", "5"}, {"H6", "6"}]}
+    ]
+  end
 
   @impl Athanor.Component
   def render(:live, node, _ctx) do
