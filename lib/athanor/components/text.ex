@@ -1,18 +1,25 @@
 defmodule Athanor.Components.Text do
   @moduledoc """
   Text primitive. Renders raw HTML stored in `node["props"]["text"]`
-  wrapped by `Athanor.Components.Formatting.apply/1` so the legacy
-  formatting props (padding, margin, colors, alignment, border) continue
-  to work — round-trips byte-equal with prod data shape.
+  wrapped by `Athanor.Components.Formatting.apply/1` so the standard
+  formatting props (padding, margin, colors, alignment, border) apply.
 
-  ## Documented exception
+  ## Editor form (rich text)
 
-  `editor_form/0` returns `AmplifyWeb.PageBuilder.Components.Text` — the
-  legacy LiveComponent in Amplify. This is the ONE place an Athanor module
-  references an `AmplifyWeb.*` atom. Justified because we're explicitly
-  bridging Text editing to the existing rich-text editor + media manager
-  flow. The reference is to the atom only; the module is never aliased
-  or imported. The athanor architecture test allows this single exception.
+  Athanor has no built-in rich-text editor — text editing UIs are heavy
+  and opinionated (TipTap, Trix, Quill, custom). Consumers wire their
+  own by registering a `Phoenix.LiveComponent` via application config:
+
+      # config/config.exs (consumer app)
+      config :athanor, text_editor_form: MyApp.PageBuilder.RichTextField
+
+  `c:Athanor.Component.editor_form/0` reads that value at runtime. When
+  unset (the default), it returns `nil` and Athanor falls back to the
+  auto-generated `:textarea` field declared in `c:Athanor.Component.fields/0`.
+
+  The registered LC receives the same assigns as any custom field LC
+  documented in `Athanor.Field` — `:value`, `:on_change`, `:ctx`,
+  `:label`, `:opts`.
   """
 
   use Athanor.Component
@@ -47,7 +54,7 @@ defmodule Athanor.Components.Text do
   end
 
   @impl Athanor.Component
-  def editor_form, do: AmplifyWeb.PageBuilder.Components.Text
+  def editor_form, do: Application.get_env(:athanor, :text_editor_form)
 
   @impl Athanor.Component
   def render(:live, node, _ctx) do

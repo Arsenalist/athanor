@@ -3,13 +3,11 @@ defmodule Athanor.TreeArchitectureTest do
 
   @tree_source Path.expand("../../lib/athanor/tree.ex", __DIR__)
 
-  # Files allowed to reference AmplifyWeb modules. The Text component is a
-  # documented exception: it bridges editing to the legacy
-  # AmplifyWeb.PageBuilder.Components.Text LC via `editor_form/0` until the
-  # rich-text + asset adapters land (Step 5). See the component's @moduledoc.
-  @amplify_web_exceptions [
-    Path.expand("../../lib/athanor/components/text.ex", __DIR__)
-  ]
+  # No files in lib/athanor/ may reference AmplifyWeb modules. Athanor is
+  # host-agnostic; consumer-specific bindings live behind runtime
+  # configuration (see e.g. Athanor.Components.Text's `editor_form/0`,
+  # which reads `Application.get_env(:athanor, :text_editor_form)`).
+  @amplify_web_exceptions []
 
   @forbidden_aliases [
     "alias Amplify",

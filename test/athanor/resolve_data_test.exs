@@ -51,7 +51,9 @@ defmodule Athanor.ResolveDataTest do
         n = String.to_integer(new["num_zones"] || "2")
         names = zone_names(n)
         old_zones = new["zones"] || %{}
-        zones = Enum.reduce(names, %{}, fn k, acc -> Map.put(acc, k, Map.get(old_zones, k, [])) end)
+
+        zones =
+          Enum.reduce(names, %{}, fn k, acc -> Map.put(acc, k, Map.get(old_zones, k, [])) end)
 
         new
         |> Map.put("zone_names", names)
@@ -111,7 +113,7 @@ defmodule Athanor.ResolveDataTest do
 
     test "module without resolve_data → new props returned as-is" do
       old = %{"title" => "T"}
-      new = Map.put(old, "title" , "T2")
+      new = Map.put(old, "title", "T2")
 
       assert AutoEditorForm.apply_resolve_data(StaticOnly, old, new) == new
     end

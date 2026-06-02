@@ -56,16 +56,28 @@ defmodule Athanor.Components.Columns do
     ],
     3 => [
       %{label: "Equal (33/33/33)", value: "equal", classes: ["w-1/3", "w-1/3", "w-1/3"]},
-      %{label: "Center emphasis (25/50/25)", value: "25-50-25",
-        classes: ["w-1/4", "w-1/2", "w-1/4"]},
-      %{label: "Left emphasis (50/25/25)", value: "50-25-25",
-        classes: ["w-1/2", "w-1/4", "w-1/4"]},
-      %{label: "Right emphasis (25/25/50)", value: "25-25-50",
-        classes: ["w-1/4", "w-1/4", "w-1/2"]}
+      %{
+        label: "Center emphasis (25/50/25)",
+        value: "25-50-25",
+        classes: ["w-1/4", "w-1/2", "w-1/4"]
+      },
+      %{
+        label: "Left emphasis (50/25/25)",
+        value: "50-25-25",
+        classes: ["w-1/2", "w-1/4", "w-1/4"]
+      },
+      %{
+        label: "Right emphasis (25/25/50)",
+        value: "25-25-50",
+        classes: ["w-1/4", "w-1/4", "w-1/2"]
+      }
     ],
     4 => [
-      %{label: "Equal (25/25/25/25)", value: "equal",
-        classes: ["w-1/4", "w-1/4", "w-1/4", "w-1/4"]}
+      %{
+        label: "Equal (25/25/25/25)",
+        value: "equal",
+        classes: ["w-1/4", "w-1/4", "w-1/4", "w-1/4"]
+      }
     ]
   }
 
@@ -115,8 +127,7 @@ defmodule Athanor.Components.Columns do
         :ok
 
       _ ->
-        {:error,
-         {:invalid_zone_count, "expected #{@min_zones}..#{@max_zones} zones"}}
+        {:error, {:invalid_zone_count, "expected #{@min_zones}..#{@max_zones} zones"}}
     end
   end
 
@@ -131,8 +142,7 @@ defmodule Athanor.Components.Columns do
       {"num_zones", :select,
        label: "Number of Columns",
        options: Enum.map(@min_zones..@max_zones, fn n -> {"#{n}", "#{n}"} end)},
-      {"vertical_align", :select,
-       label: "Vertical Align", options: @vertical_align_options},
+      {"vertical_align", :select, label: "Vertical Align", options: @vertical_align_options},
       # width_distribution options are populated dynamically by
       # resolve_fields/2 based on the current num_zones.
       {"width_distribution", :select, label: "Column Widths", options: []}

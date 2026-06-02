@@ -57,8 +57,7 @@ defmodule Athanor.Components.Button do
       {"variant", :select,
        label: "Variant",
        options: [{"Primary", "primary"}, {"Secondary", "secondary"}, {"Ghost", "ghost"}]},
-      {"size", :select,
-       label: "Size", options: [{"SM", "sm"}, {"MD", "md"}, {"LG", "lg"}]},
+      {"size", :select, label: "Size", options: [{"SM", "sm"}, {"MD", "md"}, {"LG", "lg"}]},
       {"target", :select,
        label: "Target",
        options: [

@@ -22,6 +22,7 @@ defmodule Athanor.Editor.CanvasTest do
 
     def render(:live, node, _ctx) do
       assigns = %{title: node["props"]["title"]}
+
       ~H"""
       <div data-testid="fake-render">FAKE:{@title}</div>
       """

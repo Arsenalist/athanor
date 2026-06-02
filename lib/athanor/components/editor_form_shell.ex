@@ -22,17 +22,18 @@ defmodule Athanor.Components.EditorFormShell do
 
   alias Athanor.Components.Formatting.EditorForm, as: FormattingEditorForm
 
-  attr :active_tab, :string, default: "component"
-  attr :myself, :any, required: true
-  attr :formatting_form, :any, required: true
-  attr :open_sections, :any, required: true
+  attr(:active_tab, :string, default: "component")
+  attr(:myself, :any, required: true)
+  attr(:formatting_form, :any, required: true)
+  attr(:open_sections, :any, required: true)
 
-  attr :show_formatting, :boolean,
+  attr(:show_formatting, :boolean,
     default: true,
     doc:
       "When false, omits the Formatting tab + tab strip entirely. Used for forms that don't represent a renderable node (e.g. page-level settings)."
+  )
 
-  slot :component, required: true
+  slot(:component, required: true)
 
   def shell(assigns) do
     ~H"""

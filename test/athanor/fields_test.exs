@@ -46,9 +46,7 @@ defmodule Athanor.FieldsTest do
     def fields,
       do: [
         {"venue_id", :select,
-         label: "Venue",
-         prompt: "Select a venue",
-         options: &__MODULE__.load_options/1}
+         label: "Venue", prompt: "Select a venue", options: &__MODULE__.load_options/1}
       ]
 
     # Dynamic options receive ctx; close over account_id for the assertion.
@@ -369,8 +367,7 @@ defmodule Athanor.FieldsTest do
           {"mode", :select,
            label: "Mode", options: [{"Calendar", "calendar"}, {"Images", "images"}]},
           {"calendar_only", :checkbox,
-           label: "Show event list on desktop",
-           if: fn props -> props["mode"] == "calendar" end},
+           label: "Show event list on desktop", if: fn props -> props["mode"] == "calendar" end},
           {"calendar_only_custom", :custom,
            label: "Calendar custom",
            module: FakeCustomLC,

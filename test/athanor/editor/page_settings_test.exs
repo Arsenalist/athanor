@@ -83,7 +83,11 @@ defmodule Athanor.Editor.PageSettingsTest do
       socket = mock_socket(content: %{"content" => []}, metadata: %{"title" => "Old"})
 
       {:noreply, new_socket} =
-        EditorLive.handle_info(nil, {:update_component_props, "page-settings", %{"title" => "New"}}, socket)
+        EditorLive.handle_info(
+          nil,
+          {:update_component_props, "page-settings", %{"title" => "New"}},
+          socket
+        )
 
       assert new_socket.assigns.metadata == %{"title" => "New"}
       # Content tree untouched.
@@ -98,7 +102,8 @@ defmodule Athanor.Editor.PageSettingsTest do
       socket = mock_socket(content: content, metadata: %{"title" => "Untouched"})
 
       {:noreply, new_socket} =
-        EditorLive.handle_info(nil,
+        EditorLive.handle_info(
+          nil,
           {:update_component_props, "n1", %{"text" => "<p>new</p>"}},
           socket
         )
@@ -129,8 +134,10 @@ defmodule Athanor.Editor.PageSettingsTest do
 
   describe "resolve_data on page settings" do
     test "cascade derives slug from title (called via AutoEditorForm helper)" do
-      out = Athanor.AutoEditorForm.apply_resolve_data(CascadePS, %{"title" => ""},
-              %{"title" => "Hello World"})
+      out =
+        Athanor.AutoEditorForm.apply_resolve_data(CascadePS, %{"title" => ""}, %{
+          "title" => "Hello World"
+        })
 
       assert out["title"] == "Hello World"
       assert out["slug"] == "hello-world"

@@ -2,7 +2,7 @@ defmodule Athanor.Field do
   @moduledoc """
   Behaviour for consumer-supplied `:custom` field modules.
 
-  A `:custom` field declared in `Athanor.Component.fields/0` points at a
+  A `:custom` field declared in `c:Athanor.Component.fields/0` points at a
   module implementing this behaviour:
 
       def fields, do: [

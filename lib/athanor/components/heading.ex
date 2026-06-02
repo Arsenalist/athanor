@@ -61,8 +61,8 @@ defmodule Athanor.Components.Heading do
     """
   end
 
-  attr :level, :integer, required: true
-  attr :text, :string, required: true
+  attr(:level, :integer, required: true)
+  attr(:text, :string, required: true)
 
   defp heading_tag(%{level: 1} = assigns), do: ~H|<h1>{@text}</h1>|
   defp heading_tag(%{level: 2} = assigns), do: ~H|<h2>{@text}</h2>|

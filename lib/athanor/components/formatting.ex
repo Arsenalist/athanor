@@ -55,9 +55,9 @@ defmodule Athanor.Components.Formatting do
         Athanor.Components.Formatting.apply(assigns)
       end
   """
-  attr :formatting, :map, default: %{}
-  slot :inner_block, required: false
-  attr :inner, :any, default: nil
+  attr(:formatting, :map, default: %{})
+  slot(:inner_block, required: false)
+  attr(:inner, :any, default: nil)
 
   def apply(assigns) do
     ~H"""

@@ -31,9 +31,9 @@ defmodule Athanor.Components.Formatting.EditorForm do
 
   use Phoenix.Component
 
-  attr :form, :any, required: true, doc: "A Phoenix.HTML.Form built with `as: :formatting`"
-  attr :myself, :any, required: true, doc: "phx-target — the parent LC's myself"
-  attr :open_sections, :any, required: true, doc: "MapSet of section keys currently expanded"
+  attr(:form, :any, required: true, doc: "A Phoenix.HTML.Form built with `as: :formatting`")
+  attr(:myself, :any, required: true, doc: "phx-target — the parent LC's myself")
+  attr(:open_sections, :any, required: true, doc: "MapSet of section keys currently expanded")
 
   def editor_form(assigns) do
     ~H"""
@@ -147,10 +147,10 @@ defmodule Athanor.Components.Formatting.EditorForm do
   #     that bubbles up to the surrounding `<.form phx-change=...>`
   #   - Clear button uses `Phoenix.LiveView.JS.set_attribute` + `dispatch`
   #     to wipe the hidden input and refire the form's change handler
-  attr :label, :string, required: true
-  attr :name, :string, required: true
-  attr :value, :any, required: true, doc: "current color (hex) or nil/empty"
-  attr :fallback, :string, default: "#000000"
+  attr(:label, :string, required: true)
+  attr(:name, :string, required: true)
+  attr(:value, :any, required: true, doc: "current color (hex) or nil/empty")
+  attr(:fallback, :string, default: "#000000")
 
   defp color_swatch(assigns) do
     set? = is_binary(assigns.value) and assigns.value != ""
@@ -210,12 +210,12 @@ defmodule Athanor.Components.Formatting.EditorForm do
     """
   end
 
-  attr :section, :string, required: true
-  attr :label, :string, required: true
-  attr :icon, :string, required: true
-  attr :open_sections, :any, required: true
-  attr :myself, :any, required: true
-  slot :inner_block, required: true
+  attr(:section, :string, required: true)
+  attr(:label, :string, required: true)
+  attr(:icon, :string, required: true)
+  attr(:open_sections, :any, required: true)
+  attr(:myself, :any, required: true)
+  slot(:inner_block, required: true)
 
   defp section(assigns) do
     ~H"""
@@ -254,9 +254,9 @@ defmodule Athanor.Components.Formatting.EditorForm do
     end
   end
 
-  attr :form, :any, required: true
-  attr :key, :atom, required: true
-  attr :label, :string, required: true
+  attr(:form, :any, required: true)
+  attr(:key, :atom, required: true)
+  attr(:label, :string, required: true)
 
   defp px_field(assigns) do
     ~H"""

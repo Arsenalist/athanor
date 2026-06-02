@@ -494,12 +494,24 @@ defmodule Athanor.Editor.Live do
   end
 
   @doc false
-  def do_add_component_to_zone(%State{} = state, consumer_module, parent_id, zone_name, type, socket) do
+  def do_add_component_to_zone(
+        %State{} = state,
+        consumer_module,
+        parent_id,
+        zone_name,
+        type,
+        socket
+      ) do
     new_component = build_component(consumer_module, type, socket)
 
     case Tree.insert(state.content, {parent_id, zone_name}, new_component) do
       {:ok, updated} ->
-        %{state | content: updated, column_picker: nil, selected_component_id: new_component["id"]}
+        %{
+          state
+          | content: updated,
+            column_picker: nil,
+            selected_component_id: new_component["id"]
+        }
 
       {:error, _} ->
         %{state | column_picker: nil}

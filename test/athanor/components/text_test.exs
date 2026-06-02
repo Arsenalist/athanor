@@ -87,8 +87,24 @@ defmodule Athanor.Components.TextTest do
       assert Text.required_props() == ["text"]
     end
 
-    test "editor_form returns the legacy LC (documented exception)" do
-      assert Text.editor_form() == AmplifyWeb.PageBuilder.Components.Text
+    test "editor_form defaults to nil when no app config is set" do
+      previous = Application.get_env(:athanor, :text_editor_form)
+      Application.delete_env(:athanor, :text_editor_form)
+      assert Text.editor_form() == nil
+      if previous, do: Application.put_env(:athanor, :text_editor_form, previous)
+    end
+
+    test "editor_form returns the module registered in app config" do
+      previous = Application.get_env(:athanor, :text_editor_form)
+      Application.put_env(:athanor, :text_editor_form, SomeConsumer.RichTextLC)
+
+      try do
+        assert Text.editor_form() == SomeConsumer.RichTextLC
+      after
+        if previous,
+          do: Application.put_env(:athanor, :text_editor_form, previous),
+          else: Application.delete_env(:athanor, :text_editor_form)
+      end
     end
 
     test "metadata type" do

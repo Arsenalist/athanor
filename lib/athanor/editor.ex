@@ -76,8 +76,10 @@ defmodule Athanor.Editor do
   `{:ok, anything}` for success (library shows success toast) or
   `{:error, term}` for failure (library shows error toast).
   """
-  @callback save(socket :: Phoenix.LiveView.Socket.t(),
-                  state :: %{required(:content) => map(), required(:metadata) => map()}) ::
+  @callback save(
+              socket :: Phoenix.LiveView.Socket.t(),
+              state :: %{required(:content) => map(), required(:metadata) => map()}
+            ) ::
               {:ok, any()} | {:error, term()}
 
   @doc """
@@ -103,8 +105,11 @@ defmodule Athanor.Editor do
   Use cases: injecting `brand_id`/`account_id` into per-page-defaults
   for legacy components that read those props at render time.
   """
-  @callback seed_default_props(component :: map(), type :: String.t(),
-                                socket :: Phoenix.LiveView.Socket.t()) :: map()
+  @callback seed_default_props(
+              component :: map(),
+              type :: String.t(),
+              socket :: Phoenix.LiveView.Socket.t()
+            ) :: map()
 
   @optional_callbacks render_header: 1,
                       render_top_bar_actions: 1,
@@ -133,23 +138,28 @@ defmodule Athanor.Editor do
     modal renders here from the consumer LV; consumers can stack
     additional modals.
   """
-  attr :page_title, :string, default: nil, doc: "Current page title, forwarded to slots."
+  attr(:page_title, :string, default: nil, doc: "Current page title, forwarded to slots.")
 
-  attr :selected_component_id, :string,
+  attr(:selected_component_id, :string,
     default: nil,
     doc: "Selected node id, forwarded to slots."
+  )
 
-  attr :viewport, :atom, default: :desktop, doc: "Current preview viewport (:desktop|:tablet|:mobile)."
+  attr(:viewport, :atom,
+    default: :desktop,
+    doc: "Current preview viewport (:desktop|:tablet|:mobile)."
+  )
 
-  attr :show_components_panel, :boolean,
+  attr(:show_components_panel, :boolean,
     default: true,
     doc: "When false, hides the left sidebar and renders an expand button in the canvas margin."
+  )
 
-  slot :header
-  slot :sidebar_left
-  slot :sidebar_right
-  slot :modals
-  slot :inner_block, doc: "Canvas region content."
+  slot(:header)
+  slot(:sidebar_left)
+  slot(:sidebar_right)
+  slot(:modals)
+  slot(:inner_block, doc: "Canvas region content.")
 
   def shell(assigns) do
     slot_ctx = %{
@@ -234,10 +244,10 @@ defmodule Athanor.Editor do
   Configure button when ctx.edit_mode? + ctx.select_component_callback
   are set.
   """
-  attr :content, :map, required: true, doc: "editor_content map (must have \"content\" key)"
-  attr :ctx, Athanor.Ctx, required: true
-  attr :selected_component_id, :string, default: nil
-  attr :viewport, :atom, default: :desktop, doc: ":desktop | :tablet | :mobile"
+  attr(:content, :map, required: true, doc: "editor_content map (must have \"content\" key)")
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:selected_component_id, :string, default: nil)
+  attr(:viewport, :atom, default: :desktop, doc: ":desktop | :tablet | :mobile")
 
   def canvas(assigns) do
     nodes = Map.get(assigns.content, "content", [])
@@ -324,9 +334,9 @@ defmodule Athanor.Editor do
   `page_settings_component` is provided, renders that component's form
   via `Athanor.AutoEditorForm` ABOVE the palette.
   """
-  attr :ctx, Athanor.Ctx, required: true
-  attr :page_settings_component, :atom, default: nil
-  attr :metadata, :map, default: %{}
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:page_settings_component, :atom, default: nil)
+  attr(:metadata, :map, default: %{})
 
   def components_panel(assigns) do
     ~H"""
@@ -417,9 +427,9 @@ defmodule Athanor.Editor do
   Renders nothing when nothing is selected (parent shell hides the
   sidebar region in that case).
   """
-  attr :selected_component_id, :string, default: nil
-  attr :content, :map, required: true
-  attr :ctx, Athanor.Ctx, required: true
+  attr(:selected_component_id, :string, default: nil)
+  attr(:content, :map, required: true)
+  attr(:ctx, Athanor.Ctx, required: true)
 
   def config_panel(assigns) do
     node =
@@ -477,8 +487,8 @@ defmodule Athanor.Editor do
     end
   end
 
-  attr :node, :map, required: true
-  attr :ctx, Athanor.Ctx, required: true
+  attr(:node, :map, required: true)
+  attr(:ctx, Athanor.Ctx, required: true)
 
   defp config_dispatch(assigns) do
     type = assigns.node["type"]
@@ -549,9 +559,10 @@ defmodule Athanor.Editor do
   `column_picker` is set to `{parent_id, zone_name}`. On submit emits
   `"add_component_to_zone"` with the parent + zone + chosen type.
   """
-  attr :column_picker, :any,
+  attr(:column_picker, :any,
     required: true,
     doc: "nil OR {parent_id :: String.t(), zone_name :: String.t()}"
+  )
 
   def zone_picker_modal(assigns) do
     ~H"""

@@ -110,7 +110,7 @@ defmodule Athanor.Renderer do
         true
 
       function_exported?(module, :has_required_props?, 1) ->
-        not !!module.has_required_props?(props)
+        not (!!module.has_required_props?(props))
 
       true ->
         false

@@ -36,18 +36,21 @@ defmodule Athanor.Fields do
 
   use Phoenix.Component
 
-  attr :module, :atom, required: true, doc: "component module whose fields/0 to render"
-  attr :props, :map, default: %{}, doc: "current node props"
-  attr :ctx, Athanor.Ctx, required: true
-  attr :myself, :any, required: true, doc: "phx-target for the auto-form's parent LC"
+  attr(:module, :atom, required: true, doc: "component module whose fields/0 to render")
+  attr(:props, :map, default: %{}, doc: "current node props")
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:myself, :any, required: true, doc: "phx-target for the auto-form's parent LC")
 
-  attr :component_id, :string,
+  attr(:component_id, :string,
     default: "default",
-    doc: "owning node id — namespaces custom field LC ids so multiple instances of the same component type don't collide on switch"
+    doc:
+      "owning node id — namespaces custom field LC ids so multiple instances of the same component type don't collide on switch"
+  )
 
-  attr :on_custom_change, :any,
+  attr(:on_custom_change, :any,
     required: true,
     doc: "fn (key, value) -> any -- invoked by custom field LCs"
+  )
 
   def render(assigns) do
     fields =
@@ -100,11 +103,11 @@ defmodule Athanor.Fields do
     """
   end
 
-  attr :key, :string, required: true
-  attr :type, :atom, required: true
-  attr :opts, :any, required: true
-  attr :props, :map, required: true
-  attr :ctx, Athanor.Ctx, required: true
+  attr(:key, :string, required: true)
+  attr(:type, :atom, required: true)
+  attr(:opts, :any, required: true)
+  attr(:props, :map, required: true)
+  attr(:ctx, Athanor.Ctx, required: true)
 
   defp field(%{type: :text} = assigns) do
     ~H"""
@@ -258,12 +261,12 @@ defmodule Athanor.Fields do
     """
   end
 
-  attr :key, :string, required: true
-  attr :opts, :any, required: true
-  attr :props, :map, required: true
-  attr :ctx, Athanor.Ctx, required: true
-  attr :component_id, :string, required: true
-  attr :on_change, :any, required: true
+  attr(:key, :string, required: true)
+  attr(:opts, :any, required: true)
+  attr(:props, :map, required: true)
+  attr(:ctx, Athanor.Ctx, required: true)
+  attr(:component_id, :string, required: true)
+  attr(:on_change, :any, required: true)
 
   defp custom_field(assigns) do
     assigns =
