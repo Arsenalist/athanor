@@ -11,9 +11,11 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-06-02
+## [0.1.0-beta.1] - 2026-06-02
 
-Initial public release.
+First public beta. API may shift before `0.1.0` based on early
+feedback. Pin tightly (`{:athanor, "== 0.1.0-beta.1"}`) if integrating
+during the beta window.
 
 ### Added
 
@@ -60,5 +62,5 @@ Initial public release.
   Athanor.Component module as the `:page_settings_component` opt and
   the library auto-renders its `fields/0` at the top of the sidebar.
 
-[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.1...HEAD
+[0.1.0-beta.1]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.1
