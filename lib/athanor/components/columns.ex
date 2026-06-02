@@ -185,6 +185,7 @@ defmodule Athanor.Components.Columns do
 
     assigns = %{
       ctx: ctx,
+      node_id: node["id"],
       zone_names: zone_names,
       zones: zones,
       align_class: align_class,
@@ -210,6 +211,8 @@ defmodule Athanor.Components.Columns do
           :if={@edit_mode? and @ctx.add_component_callback != nil}
           type="button"
           phx-click={@ctx.add_component_callback.(zone_name)}
+          phx-value-parent-id={@node_id}
+          phx-value-zone-name={zone_name}
           class="mx-auto block text-center text-gray-500 cursor-pointer border-2 border-gray-300 rounded-lg p-1 mt-4 hover:bg-gray-100 w-40"
         >
           <i class="fas fa-plus mr-1"></i> Add Component
