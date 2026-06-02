@@ -28,7 +28,8 @@ defmodule Athanor.AutoEditorForm do
   # Custom field on_change → routed back into our own update/2.
   @impl true
   def update(%{action: {:custom_field_changed, key, value}}, socket) do
-    new_props = Map.put(socket.assigns.props, key, value)
+    old = socket.assigns.props
+    new_props = apply_resolve_data(socket.assigns.component_module, old, Map.put(old, key, value))
     send(self(), {:update_component_props, socket.assigns.component_id, new_props})
     {:ok, Phoenix.Component.assign(socket, :props, new_props)}
   end
@@ -59,12 +60,15 @@ defmodule Athanor.AutoEditorForm do
 
   # Formatting tab form fires with %{"formatting" => fmt_params}
   def handle_event("update_props", %{"formatting" => formatting_params}, socket) do
+    old = socket.assigns.props
+
     new_props =
       Map.put(
-        socket.assigns.props,
+        old,
         "formatting",
         FormattingEditorForm.coerce_params(formatting_params)
       )
+      |> then(&apply_resolve_data(socket.assigns.component_module, old, &1))
 
     send(self(), {:update_component_props, socket.assigns.component_id, new_props})
     {:noreply, socket}
@@ -72,17 +76,32 @@ defmodule Athanor.AutoEditorForm do
 
   # Component tab form fires with flat field params (per `name=` attr).
   def handle_event("update_props", params, socket) when is_map(params) do
+    old = socket.assigns.props
     fields = field_index(socket.assigns.component_module)
 
     new_props =
       params
       |> Map.take(Map.keys(fields))
-      |> Enum.reduce(socket.assigns.props, fn {key, raw}, acc ->
+      |> Enum.reduce(old, fn {key, raw}, acc ->
         Map.put(acc, key, coerce(raw, fields[key]))
       end)
+      |> then(&apply_resolve_data(socket.assigns.component_module, old, &1))
 
     send(self(), {:update_component_props, socket.assigns.component_id, new_props})
     {:noreply, socket}
+  end
+
+  @doc """
+  Calls `module.resolve_data(old, new)` if the module exports it,
+  otherwise returns `new` unchanged. Exposed publicly so tests can
+  verify the cascade without socket plumbing.
+  """
+  def apply_resolve_data(module, old, new) do
+    if function_exported?(module, :resolve_data, 2) do
+      module.resolve_data(old, new)
+    else
+      new
+    end
   end
 
   defp field_index(module) do

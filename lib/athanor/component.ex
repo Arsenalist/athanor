@@ -87,6 +87,8 @@ defmodule Athanor.Component do
   @callback validate(props()) :: :ok | {:error, term()}
   @callback render(target(), tree_node(), Athanor.Ctx.t()) :: any()
   @callback fields() :: [field()]
+  @callback resolve_fields(props(), map()) :: [field()]
+  @callback resolve_data(old_props :: props(), new_props :: props()) :: props()
   @callback editor_form() :: module() | nil
   @callback child_zones(tree_node()) :: %{String.t() => [tree_node()]}
 
@@ -96,6 +98,8 @@ defmodule Athanor.Component do
     validate: 1,
     render: 3,
     fields: 0,
+    resolve_fields: 2,
+    resolve_data: 2,
     editor_form: 0,
     child_zones: 1
   ]
@@ -134,6 +138,12 @@ defmodule Athanor.Component do
       def fields, do: []
 
       @impl Athanor.Component
+      def resolve_fields(_props, _opts), do: fields()
+
+      @impl Athanor.Component
+      def resolve_data(_old, new), do: new
+
+      @impl Athanor.Component
       def editor_form, do: nil
 
       @impl Athanor.Component
@@ -143,6 +153,8 @@ defmodule Athanor.Component do
                      required_props: 0,
                      validate: 1,
                      fields: 0,
+                     resolve_fields: 2,
+                     resolve_data: 2,
                      editor_form: 0,
                      child_zones: 1
     end

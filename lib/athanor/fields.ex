@@ -51,7 +51,7 @@ defmodule Athanor.Fields do
 
   def render(assigns) do
     fields =
-      assigns.module.fields()
+      assigns.module.resolve_fields(assigns.props, %{})
       |> Enum.filter(&visible?(&1, assigns.props))
 
     {custom_fields, builtin_fields} =

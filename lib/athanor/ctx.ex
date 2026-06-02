@@ -14,6 +14,13 @@ defmodule Athanor.Ctx do
     importing app-specific modules. v1 keeps the fields with `nil`
     defaults; adapter behaviours land in a later step.
 
+  - **Editor mode**: `edit_mode?` and `add_component_callback`. Set by
+    the host LiveView when rendering inside the editor canvas. Container
+    components (e.g. `Athanor.Components.Columns`) branch on
+    `edit_mode?` to render canvas chrome (per-zone borders, "+"
+    buttons) and invoke `add_component_callback.(zone_name)` so the
+    consumer can open its palette modal pre-targeted at the right zone.
+
   `extra` is a free-form map for consumer-side passthrough that doesn't fit
   the named fields (feature flags, request id, A/B test bucket, etc.).
   Athanor never inspects `extra`.
@@ -37,6 +44,8 @@ defmodule Athanor.Ctx do
             rich_text: nil,
             data_sources: %{},
             i18n: nil,
+            edit_mode?: false,
+            add_component_callback: nil,
             extra: %{}
 
   @type t :: %__MODULE__{
@@ -49,6 +58,8 @@ defmodule Athanor.Ctx do
           rich_text: module() | nil,
           data_sources: %{String.t() => module()},
           i18n: module() | nil,
+          edit_mode?: boolean(),
+          add_component_callback: (String.t() -> any()) | nil,
           extra: map()
         }
 
