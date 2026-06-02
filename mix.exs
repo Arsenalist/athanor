@@ -39,7 +39,11 @@ defmodule Athanor.MixProject do
       # `Phoenix.LiveComponent` in `Athanor.Editor.Live`. Brings :phoenix,
       # :phoenix_html, :phoenix_template transitively — fine, they are
       # framework primitives, not host-app coupling.
-      {:phoenix_live_view, "~> 1.1"}
+      {:phoenix_live_view, "~> 1.1"},
+      # Required by `Phoenix.LiveView.JS` for serialising click commands.
+      # Consumer apps almost always already pull this in; here it's pinned
+      # so the library's own test suite can exercise JS commands.
+      {:jason, "~> 1.4", only: [:test]}
     ]
   end
 end

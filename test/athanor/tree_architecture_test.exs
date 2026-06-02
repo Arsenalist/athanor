@@ -31,14 +31,30 @@ defmodule Athanor.TreeArchitectureTest do
     # ~H sigil. Phoenix as a framework is fine; Amplify as an app is not.
     test "Athanor.MixProject declares zero forbidden runtime dependencies" do
       deps = Athanor.MixProject.project()[:deps] || []
-      dep_names = Enum.map(deps, &elem(&1, 0))
+
+      # Allow test-only deps (only: [:test] tuple opt) since they don't
+      # affect runtime. Currently jason is included as test-only so the
+      # suite can exercise Phoenix.LiveView.JS.* serialisation.
+      runtime_deps =
+        deps
+        |> Enum.reject(fn dep -> test_only?(dep) end)
+        |> Enum.map(&elem(&1, 0))
+
       forbidden = [:amplify, :ecto_sql, :jason]
-      offenders = Enum.filter(dep_names, &(&1 in forbidden))
+      offenders = Enum.filter(runtime_deps, &(&1 in forbidden))
 
       assert offenders == [],
-             "athanor/mix.exs must not depend on: #{inspect(offenders)}.\n" <>
-               "Athanor is host-agnostic — no Amplify, Ecto, Jason deps allowed."
+             "athanor/mix.exs must not depend on: #{inspect(offenders)} at runtime.\n" <>
+               "Athanor is host-agnostic — no Amplify, Ecto, Jason runtime deps allowed."
     end
+
+    defp test_only?({_name, _ver, opts}) when is_list(opts),
+      do: Keyword.get(opts, :only) in [:test, [:test]]
+
+    defp test_only?({_name, opts}) when is_list(opts),
+      do: Keyword.get(opts, :only) in [:test, [:test]]
+
+    defp test_only?(_), do: false
   end
 
   describe "tree.ex source boundary (belt-and-suspenders)" do
