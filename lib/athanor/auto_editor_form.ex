@@ -139,6 +139,7 @@ defmodule Athanor.AutoEditorForm do
             props={@props}
             ctx={@ctx}
             myself={@myself}
+            component_id={@component_id}
             on_custom_change={@on_custom_change}
           />
         </:component>

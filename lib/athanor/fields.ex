@@ -41,6 +41,10 @@ defmodule Athanor.Fields do
   attr :ctx, Athanor.Ctx, required: true
   attr :myself, :any, required: true, doc: "phx-target for the auto-form's parent LC"
 
+  attr :component_id, :string,
+    default: "default",
+    doc: "owning node id — namespaces custom field LC ids so multiple instances of the same component type don't collide on switch"
+
   attr :on_custom_change, :any,
     required: true,
     doc: "fn (key, value) -> any -- invoked by custom field LCs"
@@ -87,6 +91,7 @@ defmodule Athanor.Fields do
             opts={opts}
             props={@props}
             ctx={@ctx}
+            component_id={@component_id}
             on_change={@on_custom_change}
           />
         </div>
@@ -236,10 +241,16 @@ defmodule Athanor.Fields do
   attr :opts, :any, required: true
   attr :props, :map, required: true
   attr :ctx, Athanor.Ctx, required: true
+  attr :component_id, :string, required: true
   attr :on_change, :any, required: true
 
   defp custom_field(assigns) do
-    assigns = assign(assigns, :lc_id, "athanor-custom-field-" <> assigns.key)
+    assigns =
+      assign(
+        assigns,
+        :lc_id,
+        "athanor-custom-field-#{assigns.component_id}-#{assigns.key}"
+      )
 
     ~H"""
     <div>
