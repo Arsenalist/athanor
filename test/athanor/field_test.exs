@@ -4,8 +4,6 @@ defmodule Athanor.FieldTest do
   defmodule MinimalField do
     use Phoenix.LiveComponent
 
-    @behaviour Athanor.Field
-
     @impl true
     def update(assigns, socket), do: {:ok, Phoenix.Component.assign(socket, assigns)}
 

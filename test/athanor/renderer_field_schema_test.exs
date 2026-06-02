@@ -7,7 +7,6 @@ defmodule Athanor.RendererFieldSchemaTest do
 
   alias Athanor.Test.FakeComponents.{
     EditorFormFake,
-    EditorFormFakeLC,
     FieldsAndEditorFormFake,
     FieldsOnlyFake,
     Minimal,

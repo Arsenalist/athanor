@@ -60,10 +60,10 @@ defmodule Athanor.Field do
   own that state without leaking into the host LiveView.
   """
 
-  @callback update(assigns :: map(), socket :: Phoenix.LiveView.Socket.t()) ::
-              {:ok, Phoenix.LiveView.Socket.t()}
-
-  @callback render(assigns :: map()) :: Phoenix.LiveView.Rendered.t()
+  # No callbacks declared here on purpose — `update/2` and `render/1`
+  # already come from `Phoenix.LiveComponent`, which `:custom` field
+  # modules use. Redeclaring them here just produced "conflicting
+  # behaviours" warnings without adding any contract value.
 
   @doc """
   Returns `true` when `module` implements the `Athanor.Field` behaviour

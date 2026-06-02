@@ -179,42 +179,63 @@ defmodule Athanor.Fields do
     """
   end
 
-  defp resolve_options(opts, assigns) when is_function(opts, 1) do
-    opts.(assigns[:ctx] || Athanor.Ctx.new())
-  rescue
-    _ -> []
-  end
-
-  defp resolve_options(opts, _assigns) when is_list(opts), do: opts
-  defp resolve_options(_, _), do: []
-
-  defp visible?({_k, _t, opts}, props) do
-    case opts[:if] do
-      nil ->
-        true
-
-      fun when is_function(fun, 1) ->
-        try do
-          !!fun.(props)
-        rescue
-          _ -> true
-        end
-
-      _ ->
-        true
-    end
-  end
-
   defp field(%{type: :color} = assigns) do
+    raw = assigns.props[assigns.key]
+    set? = is_binary(raw) and raw != ""
+    hex = if set?, do: raw, else: "#000000"
+    hidden_id = "csw-" <> String.replace(assigns.key, ["[", "]", " "], "_")
+    carried = if set?, do: raw, else: ""
+
+    sync_js =
+      "var h=document.getElementById('#{hidden_id}');" <>
+        "h.value=this.value;" <>
+        "h.dispatchEvent(new Event('change',{bubbles:true}));"
+
+    assigns =
+      assigns
+      |> assign(:hex, hex)
+      |> assign(:set?, set?)
+      |> assign(:hidden_id, hidden_id)
+      |> assign(:carried, carried)
+      |> assign(:sync_js, sync_js)
+
     ~H"""
-    <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
-      <input
-        type="color"
-        name={@key}
-        value={@props[@key] || "#000000"}
-        class="input input-bordered input-sm w-full h-10"
-      />
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <label :if={@opts[:label]} class="block text-xs font-semibold text-base-content/70">
+          {@opts[:label]}
+        </label>
+        <button
+          :if={@set?}
+          type="button"
+          phx-click={
+            Phoenix.LiveView.JS.set_attribute({"value", ""}, to: "##{@hidden_id}")
+            |> Phoenix.LiveView.JS.dispatch("change", to: "##{@hidden_id}", bubbles: true)
+          }
+          aria-label={"Clear " <> (@opts[:label] || "color")}
+          class="text-[10px] text-base-content/40 hover:text-error cursor-pointer rounded px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/40"
+        >
+          Clear
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="hidden" id={@hidden_id} name={@key} value={@carried} />
+        <input
+          type="color"
+          value={@hex}
+          oninput={@sync_js}
+          class="w-12 h-8 rounded border border-base-300 cursor-pointer"
+        />
+        <div class={[
+          "flex-1 text-sm font-mono border rounded px-3 py-1.5",
+          if(@set?,
+            do: "bg-base-200 border-base-300 text-base-content/70",
+            else: "bg-base-100 border-base-300/60 text-base-content/40 italic"
+          )
+        ]}>
+          {if @set?, do: @hex, else: "Not set"}
+        </div>
+      </div>
     </div>
     """
   end
@@ -266,5 +287,33 @@ defmodule Athanor.Fields do
       />
     </div>
     """
+  end
+
+  # ─── helpers ───────────────────────────────────────────────────────────
+
+  defp resolve_options(opts, assigns) when is_function(opts, 1) do
+    opts.(assigns[:ctx] || Athanor.Ctx.new())
+  rescue
+    _ -> []
+  end
+
+  defp resolve_options(opts, _assigns) when is_list(opts), do: opts
+  defp resolve_options(_, _), do: []
+
+  defp visible?({_k, _t, opts}, props) do
+    case opts[:if] do
+      nil ->
+        true
+
+      fun when is_function(fun, 1) ->
+        try do
+          !!fun.(props)
+        rescue
+          _ -> true
+        end
+
+      _ ->
+        true
+    end
   end
 end

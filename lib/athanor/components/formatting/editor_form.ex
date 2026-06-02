@@ -69,27 +69,19 @@ defmodule Athanor.Components.Formatting.EditorForm do
           open_sections={@open_sections}
           myself={@myself}
         >
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="text-xs font-semibold">Text</label>
-              <input
-                type="color"
-                name="formatting[text_color]"
-                value={@form[:text_color].value || "#000000"}
-                class="input input-bordered input-sm w-full h-10"
-                phx-debounce="300"
-              />
-            </div>
-            <div>
-              <label class="text-xs font-semibold">Background</label>
-              <input
-                type="color"
-                name="formatting[background_color]"
-                value={@form[:background_color].value || "#ffffff"}
-                class="input input-bordered input-sm w-full h-10"
-                phx-debounce="300"
-              />
-            </div>
+          <div class="flex flex-col gap-3">
+            <.color_swatch
+              label="Text"
+              name="formatting[text_color]"
+              value={@form[:text_color].value}
+              fallback="#000000"
+            />
+            <.color_swatch
+              label="Background"
+              name="formatting[background_color]"
+              value={@form[:background_color].value}
+              fallback="#ffffff"
+            />
           </div>
         </.section>
 
@@ -133,20 +125,88 @@ defmodule Athanor.Components.Formatting.EditorForm do
           <div class="grid grid-cols-3 gap-2">
             <.px_field form={@form} key={:border_radius} label="Radius" />
             <.px_field form={@form} key={:border_width} label="Width" />
-            <div>
-              <label class="text-xs font-semibold">Color</label>
-              <input
-                type="color"
+            <div class="col-span-3">
+              <.color_swatch
+                label="Color"
                 name="formatting[border_color]"
-                value={@form[:border_color].value || "#000000"}
-                class="input input-bordered input-sm w-full h-10"
-                phx-debounce="300"
+                value={@form[:border_color].value}
+                fallback="#000000"
               />
             </div>
           </div>
         </.section>
       </div>
     </.form>
+    """
+  end
+
+  # Color swatch with a Clear button. Pure client-side:
+  #   - hidden input carries the submitted value (so clearing yields "")
+  #   - native color picker is display-only (name-less); its `oninput` syncs
+  #     the picked hex into the hidden input and dispatches a `change` event
+  #     that bubbles up to the surrounding `<.form phx-change=...>`
+  #   - Clear button uses `Phoenix.LiveView.JS.set_attribute` + `dispatch`
+  #     to wipe the hidden input and refire the form's change handler
+  attr :label, :string, required: true
+  attr :name, :string, required: true
+  attr :value, :any, required: true, doc: "current color (hex) or nil/empty"
+  attr :fallback, :string, default: "#000000"
+
+  defp color_swatch(assigns) do
+    set? = is_binary(assigns.value) and assigns.value != ""
+    hex = if set?, do: assigns.value, else: assigns.fallback
+    hidden_id = "csw-" <> String.replace(assigns.name, ["[", "]", " "], "_")
+    carried = if set?, do: assigns.value, else: ""
+
+    sync_js =
+      "var h=document.getElementById('#{hidden_id}');" <>
+        "h.value=this.value;" <>
+        "h.dispatchEvent(new Event('change',{bubbles:true}));"
+
+    assigns =
+      assigns
+      |> Phoenix.Component.assign(:hex, hex)
+      |> Phoenix.Component.assign(:set?, set?)
+      |> Phoenix.Component.assign(:hidden_id, hidden_id)
+      |> Phoenix.Component.assign(:carried, carried)
+      |> Phoenix.Component.assign(:sync_js, sync_js)
+
+    ~H"""
+    <div class="space-y-1">
+      <div class="flex items-center justify-between">
+        <label class="block text-xs font-semibold text-base-content/70">{@label}</label>
+        <button
+          :if={@set?}
+          type="button"
+          phx-click={
+            Phoenix.LiveView.JS.set_attribute({"value", ""}, to: "##{@hidden_id}")
+            |> Phoenix.LiveView.JS.dispatch("change", to: "##{@hidden_id}", bubbles: true)
+          }
+          aria-label={"Clear " <> @label}
+          class="text-[10px] text-base-content/40 hover:text-error cursor-pointer rounded px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error/40"
+        >
+          Clear
+        </button>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="hidden" id={@hidden_id} name={@name} value={@carried} />
+        <input
+          type="color"
+          value={@hex}
+          oninput={@sync_js}
+          class="w-12 h-8 rounded border border-base-300 cursor-pointer"
+        />
+        <div class={[
+          "flex-1 text-sm font-mono border rounded px-3 py-1.5",
+          if(@set?,
+            do: "bg-base-200 border-base-300 text-base-content/70",
+            else: "bg-base-100 border-base-300/60 text-base-content/40 italic"
+          )
+        ]}>
+          {if @set?, do: @hex, else: "Not set"}
+        </div>
+      </div>
+    </div>
     """
   end
 

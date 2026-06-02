@@ -22,6 +22,7 @@ defmodule Athanor.ResolveFieldsTest do
 
   defmodule StaticOnly do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "static_only", label: "S"}
     def fields, do: [{"title", :text, label: "Title"}]
   end
@@ -41,6 +42,7 @@ defmodule Athanor.ResolveFieldsTest do
 
   defmodule DynamicOptions do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "dynamic_options", label: "D"}
 
     def fields,
@@ -91,6 +93,7 @@ defmodule Athanor.ResolveFieldsTest do
 
   defmodule ConditionalInclusion do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "cond_incl", label: "C"}
     def fields, do: [{"mode", :text, label: "Mode"}]
 
@@ -124,6 +127,7 @@ defmodule Athanor.ResolveFieldsTest do
 
   defmodule TypeSwap do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "type_swap", label: "T"}
     def fields, do: [{"body", :text, label: "Body"}]
 

@@ -144,6 +144,9 @@ defmodule Athanor.AutoEditorForm do
 
     assigns = Phoenix.Component.assign(assigns, :on_custom_change, on_custom_change_fn)
 
+    show_formatting = Map.get(assigns, :show_formatting, true)
+    assigns = Phoenix.Component.assign(assigns, :show_formatting, show_formatting)
+
     ~H"""
     <div data-testid="athanor-auto-editor-form">
       <EditorFormShell.shell
@@ -151,6 +154,7 @@ defmodule Athanor.AutoEditorForm do
         myself={@myself}
         formatting_form={@formatting_form}
         open_sections={@open_sections}
+        show_formatting={@show_formatting}
       >
         <:component>
           <Athanor.Fields.render

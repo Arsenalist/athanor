@@ -22,6 +22,7 @@ defmodule Athanor.ResolveDataTest do
 
   defmodule StaticOnly do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "static_only", label: "S"}
     def fields, do: [{"title", :text, label: "Title"}]
   end
@@ -36,6 +37,7 @@ defmodule Athanor.ResolveDataTest do
 
   defmodule WithCascade do
     use Athanor.Component
+    @impl Athanor.Component
     def metadata, do: %{type: "cascade", label: "C"}
 
     def fields,
