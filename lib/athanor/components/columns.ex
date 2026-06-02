@@ -194,38 +194,58 @@ defmodule Athanor.Components.Columns do
     }
 
     ~H"""
-    <div class={"flex gap-4 flex-col @md:flex-row w-full #{@align_class}"}>
-      <div
-        :for={{zone_name, idx} <- Enum.with_index(@zone_names)}
-        class={zone_wrapper_class(@edit_mode?, Enum.at(@width_classes, idx, "flex-1"))}
-      >
-        <Renderer.node_component
-          :for={child <- Map.get(@zones, zone_name, [])}
-          node={child}
-          ctx={@ctx}
-          edit_mode={@edit_mode?}
-          show_config={false}
-        />
-
-        <button
-          :if={@edit_mode? and @ctx.add_component_callback != nil}
-          type="button"
-          phx-click={@ctx.add_component_callback.(zone_name)}
-          phx-value-parent-id={@node_id}
-          phx-value-zone-name={zone_name}
-          class="mx-auto block text-center text-gray-500 cursor-pointer border-2 border-gray-300 rounded-lg p-1 mt-4 hover:bg-gray-100 w-40"
+    <div>
+      <div class={"flex gap-4 flex-col md:flex-row w-full #{@align_class}"}>
+        <div
+          :for={{zone_name, idx} <- Enum.with_index(@zone_names)}
+          class={zone_wrapper_class(@edit_mode?, Enum.at(@width_classes, idx, "flex-1"))}
         >
-          <i class="fas fa-plus mr-1"></i> Add Component
-        </button>
+          <div
+            :for={child <- Map.get(@zones, zone_name, [])}
+            class="mb-2 flex flex-col gap-1"
+          >
+            <div
+              :if={@edit_mode? and @ctx.select_component_callback != nil}
+              class="flex justify-end"
+            >
+              <button
+                type="button"
+                phx-click={@ctx.select_component_callback.(child["id"])}
+                phx-value-id={child["id"]}
+                class="btn btn-xs btn-outline"
+                data-testid="athanor-columns-child-configure"
+              >
+                <i class="fas fa-cog mr-1"></i> Configure
+              </button>
+            </div>
+            <Renderer.node_component
+              node={child}
+              ctx={@ctx}
+              edit_mode={@edit_mode?}
+              show_config={false}
+            />
+          </div>
+
+          <button
+            :if={@edit_mode? and @ctx.add_component_callback != nil}
+            type="button"
+            phx-click={@ctx.add_component_callback.(zone_name)}
+            phx-value-parent-id={@node_id}
+            phx-value-zone-name={zone_name}
+            class="mx-auto block text-center text-gray-500 cursor-pointer border-2 border-gray-300 rounded-lg p-1 mt-4 hover:bg-gray-100 w-40"
+          >
+            <i class="fas fa-plus mr-1"></i> Add Component
+          </button>
+        </div>
       </div>
     </div>
     """
   end
 
   defp zone_wrapper_class(true, width_class),
-    do: "@md:#{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
+    do: "md:#{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
 
-  defp zone_wrapper_class(false, width_class), do: "@md:#{width_class}"
+  defp zone_wrapper_class(false, width_class), do: "md:#{width_class}"
 
   defp width_distribution_options(n) do
     @width_distributions

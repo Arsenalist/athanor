@@ -84,12 +84,50 @@ defmodule Athanor.Renderer do
       editor_form_for(module, assigns) ->
         editor_form_path(assigns)
 
+      needs_configure_placeholder?(module, assigns) ->
+        configure_placeholder(assigns)
+
       function_exported?(module, :render, 3) ->
         new_path(assigns)
 
       true ->
         legacy_path(assigns)
     end
+  end
+
+  # Edit-mode preview (canvas) for a node that fails validation OR has
+  # `has_required_props?/1` returning false. Without this gate, the
+  # component's render(:live) gets called with empty/required-missing
+  # props and typically crashes (e.g. legacy Venue LC blows up on
+  # `get_venue("")`). Top-level nodes are gated by the consumer's
+  # ComponentListRenderer placeholder; this catches NESTED nodes
+  # (e.g. children of `Athanor.Components.Columns` zones).
+  defp needs_configure_placeholder?(module, %{edit_mode: true} = assigns) do
+    props = assigns.node["props"] || %{}
+
+    cond do
+      function_exported?(module, :validate, 1) and module.validate(props) != :ok ->
+        true
+
+      function_exported?(module, :has_required_props?, 1) ->
+        not !!module.has_required_props?(props)
+
+      true ->
+        false
+    end
+  end
+
+  defp needs_configure_placeholder?(_module, _assigns), do: false
+
+  defp configure_placeholder(assigns) do
+    ~H"""
+    <div
+      data-testid="athanor-configure-placeholder"
+      class="bg-yellow-50 border border-yellow-200 rounded p-3 text-center text-sm text-yellow-800"
+    >
+      <i class="fas fa-cog mr-1"></i> Configure this component
+    </div>
+    """
   end
 
   # New-path detection for fields/0. Only fires in config mode. Empty list

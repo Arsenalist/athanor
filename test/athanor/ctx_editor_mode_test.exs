@@ -31,5 +31,17 @@ defmodule Athanor.CtxEditorModeTest do
       ctx = Ctx.new(add_component_callback: cb)
       assert is_function(ctx.add_component_callback, 1)
     end
+
+    test "select_component_callback can be set to a 1-arity fn" do
+      cb = fn _node_id -> :ok end
+      ctx = Ctx.new(select_component_callback: cb)
+      assert is_function(ctx.select_component_callback, 1)
+    end
+  end
+
+  describe "default select_component_callback" do
+    test "defaults to nil" do
+      assert Ctx.new().select_component_callback == nil
+    end
   end
 end
