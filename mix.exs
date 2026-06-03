@@ -72,7 +72,8 @@ defmodule Athanor.MixProject do
         "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md",
         "Hexdocs" => "https://hexdocs.pm/athanor"
       },
-      files: ~w(lib mix.exs README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md)
+      files:
+        ~w(lib assets/js package.json mix.exs README.md LICENSE CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md)
     ]
   end
 

@@ -375,6 +375,10 @@ defmodule Athanor.Editor.Live do
     {:noreply, update_state(socket, &do_move_component(&1, id, dir))}
   end
 
+  def handle_event(consumer, "athanor:dnd_drop", params, socket) do
+    {:noreply, update_state(socket, &do_dnd_drop(&1, consumer, params, socket))}
+  end
+
   def handle_event(consumer, "save", _params, socket) do
     {:noreply, do_save(consumer, socket)}
   end
@@ -532,6 +536,59 @@ defmodule Athanor.Editor.Live do
           if(state.selected_component_id == id, do: nil, else: state.selected_component_id)
     }
   end
+
+  @doc false
+  def do_dnd_drop(%State{} = state, consumer_module, params, socket) do
+    parent_id = params["target_parent_id"]
+    zone_name = params["target_zone"]
+    index = parse_index(params["target_index"])
+    target = drop_target(parent_id, zone_name)
+
+    case params["source"] do
+      "palette" ->
+        type = params["type"]
+        new_component = build_component(consumer_module, type, socket)
+
+        case Tree.insert(state.content, target, new_component, at: {:index, index}) do
+          {:ok, updated} ->
+            %{state | content: updated, selected_component_id: new_component["id"]}
+
+          {:error, _} ->
+            state
+        end
+
+      "tree" ->
+        node_id = params["node_id"]
+
+        case Tree.move_to(state.content, node_id, target, at: {:index, index}) do
+          {:ok, updated} ->
+            %{state | content: updated}
+
+          {:error, _} ->
+            state
+        end
+
+      _ ->
+        state
+    end
+  end
+
+  defp drop_target("root", _), do: :root
+  defp drop_target(nil, _), do: :root
+
+  defp drop_target(parent_id, zone) when is_binary(parent_id) and is_binary(zone),
+    do: {parent_id, zone}
+
+  defp parse_index(n) when is_integer(n) and n >= 0, do: n
+
+  defp parse_index(n) when is_binary(n) do
+    case Integer.parse(n) do
+      {i, _} when i >= 0 -> i
+      _ -> 0
+    end
+  end
+
+  defp parse_index(_), do: 0
 
   @doc false
   def do_move_component(%State{} = state, id, direction) do

@@ -150,6 +150,25 @@ viewport switcher, and a Save button all come from `use
 Athanor.Editor.Live`. Your storefront renders the same tree without
 any of that chrome.
 
+### 5. Wire the drag-and-drop hooks (optional but recommended)
+
+The editor supports drag-and-drop out of the box: drag from the
+components palette onto the canvas, reorder canvas items by dragging
+them up or down, drag children in and out of `Columns` zones. The
+server-side handler is built in; you only need to register the two
+JS hooks that ship with the library:
+
+```js
+// assets/js/app.js
+import { AthanorHooks } from "athanor"
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  hooks: { ...AthanorHooks /* your other hooks */ }
+})
+```
+
+Hooks use native HTML5 DnD — no JS dependency.
+
 ## Concepts
 
 | Module | Role |

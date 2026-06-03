@@ -208,10 +208,19 @@ defmodule Athanor.Components.Columns do
       <div class={"flex gap-4 flex-col md:flex-row w-full #{@align_class}"}>
         <div
           :for={{zone_name, idx} <- Enum.with_index(@zone_names)}
+          id={if @edit_mode?, do: "athanor-zone-#{@node_id}-#{zone_name}", else: nil}
+          phx-hook={if @edit_mode?, do: "AthanorDropZone", else: nil}
+          data-athanor-target-parent-id={if @edit_mode?, do: @node_id, else: nil}
+          data-athanor-target-zone={if @edit_mode?, do: zone_name, else: nil}
           class={zone_wrapper_class(@edit_mode?, Enum.at(@width_classes, idx, "flex-1"))}
         >
           <div
             :for={child <- Map.get(@zones, zone_name, [])}
+            id={if @edit_mode?, do: "athanor-zone-child-#{child["id"]}", else: nil}
+            phx-hook={if @edit_mode?, do: "AthanorDragSource", else: nil}
+            data-athanor-source={if @edit_mode?, do: "tree", else: nil}
+            data-athanor-node-id={if @edit_mode?, do: child["id"], else: nil}
+            data-athanor-drop-item={if @edit_mode?, do: "true", else: nil}
             class="mb-2 flex flex-col gap-1"
           >
             <div

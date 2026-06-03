@@ -347,8 +347,71 @@ defmodule Athanor.Tree do
   end
 
   # --------------------------------------------------------------------------
-  # move
+  # move / move_to
   # --------------------------------------------------------------------------
+
+  @doc """
+  Move the node with `node_id` from anywhere in the tree to `target`.
+
+  `target` is `:root` (top-level content list) or `{parent_id, zone_name}`
+  (a specific zone of a container node). `opts` accepts the same `:at`
+  values as `insert/4` — `:append` (default), `:prepend`, `{:index, n}`,
+  `{:after, sibling_id}`.
+
+  Implemented as a find + remove + insert. Atomic: if the insert fails
+  (e.g. `:parent_not_found`), the original tree is returned unchanged
+  via the error tuple. Idempotent when the resulting position equals
+  the original — returns the input tree byte-equal.
+
+  ## Examples
+
+      iex> tree = %{"metadata" => %{}, "content" => [
+      ...>   %{"id" => "a", "type" => "text", "props" => %{}},
+      ...>   %{"id" => "b", "type" => "text", "props" => %{}}
+      ...> ]}
+      iex> {:ok, t2} = Athanor.Tree.move_to(tree, "a", :root, at: {:index, 1})
+      iex> Enum.map(t2["content"], & &1["id"])
+      ["b", "a"]
+  """
+  def move_to(tree, node_id, target, opts \\ [])
+
+  def move_to(tree, node_id, target, opts) when is_map(tree) and is_binary(node_id) do
+    case find(tree, node_id) do
+      :error ->
+        {:error, :not_found}
+
+      {:ok, node} ->
+        # No-op shortcut: if the requested insert position is the node's
+        # current position, return the tree unchanged. Cheap structural
+        # check — at the root list only — because mid-tree shuffles
+        # almost always change the resolved index.
+        if same_position?(tree, node_id, target, opts) do
+          {:ok, tree}
+        else
+          {:ok, without_node} = remove(tree, node_id)
+
+          case insert(without_node, target, node, opts) do
+            {:ok, _} = ok -> ok
+            {:error, _} = err -> err
+          end
+        end
+    end
+  end
+
+  defp same_position?(tree, node_id, :root, opts) do
+    list = tree["content"] || []
+    idx = Enum.find_index(list, &(&1["id"] == node_id))
+
+    case {idx, Keyword.get(opts, :at, :append)} do
+      {nil, _} -> false
+      {i, {:index, j}} when i == j -> true
+      {i, :append} when i == length(list) - 1 -> true
+      {0, :prepend} -> true
+      _ -> false
+    end
+  end
+
+  defp same_position?(_tree, _node_id, _target, _opts), do: false
 
   @doc """
   Swap the node identified by `id` with its previous (`:up`) or next

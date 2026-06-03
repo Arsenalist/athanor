@@ -347,6 +347,95 @@ defmodule Athanor.TreeTest do
     end
   end
 
+  describe "move_to/3,4" do
+    test "moves a root node to a different root index" do
+      tree = load_fixture("text_only")
+
+      {:ok, t2} =
+        Tree.move_to(tree, "00000000-0000-0000-0000-000000000001", :root, at: {:index, 1})
+
+      ids = Enum.map(t2["content"], & &1["id"])
+
+      assert ids == [
+               "00000000-0000-0000-0000-000000000002",
+               "00000000-0000-0000-0000-000000000001"
+             ]
+    end
+
+    test "moves a root node into a zone" do
+      tree = load_fixture("single_column")
+      # tree has a Columns at root with id ...20, and one root-level sibling outside? load fixture
+      # to see; single_column has one Columns root with zone "one" populated. Move it onto its own
+      # zone "two" — a real reparent.
+      n = %{"id" => "rooty", "type" => "text", "props" => %{"text" => "x"}}
+      {:ok, with_root} = Tree.insert(tree, :root, n)
+
+      {:ok, t2} =
+        Tree.move_to(with_root, "rooty", {"00000000-0000-0000-0000-000000000020", "two"})
+
+      {:ok, parent} = Tree.find(t2, "00000000-0000-0000-0000-000000000020")
+      assert Enum.any?(parent["props"]["zones"]["two"], &(&1["id"] == "rooty"))
+      refute Enum.any?(t2["content"], &(&1["id"] == "rooty"))
+    end
+
+    test "moves a zone child to root" do
+      tree = load_fixture("single_column")
+      # The single populated zone "one" has one child — move it to root.
+      {:ok, parent_before} = Tree.find(tree, "00000000-0000-0000-0000-000000000020")
+      [child | _] = parent_before["props"]["zones"]["one"]
+      child_id = child["id"]
+
+      {:ok, t2} = Tree.move_to(tree, child_id, :root)
+
+      assert Enum.any?(t2["content"], &(&1["id"] == child_id))
+      {:ok, parent_after} = Tree.find(t2, "00000000-0000-0000-0000-000000000020")
+      refute Enum.any?(parent_after["props"]["zones"]["one"], &(&1["id"] == child_id))
+    end
+
+    test "moves a node between zones of the same parent" do
+      tree = load_fixture("single_column")
+      {:ok, parent_before} = Tree.find(tree, "00000000-0000-0000-0000-000000000020")
+      [child | _] = parent_before["props"]["zones"]["one"]
+      child_id = child["id"]
+
+      {:ok, t2} =
+        Tree.move_to(tree, child_id, {"00000000-0000-0000-0000-000000000020", "two"})
+
+      {:ok, parent_after} = Tree.find(t2, "00000000-0000-0000-0000-000000000020")
+      assert Enum.any?(parent_after["props"]["zones"]["two"], &(&1["id"] == child_id))
+      refute Enum.any?(parent_after["props"]["zones"]["one"], &(&1["id"] == child_id))
+    end
+
+    test "no-op for same-position move" do
+      tree = load_fixture("text_only")
+      first_id = "00000000-0000-0000-0000-000000000001"
+
+      {:ok, t2} = Tree.move_to(tree, first_id, :root, at: {:index, 0})
+      assert t2 == tree
+    end
+
+    test "returns {:error, :not_found} for unknown node_id" do
+      tree = load_fixture("text_only")
+      assert Tree.move_to(tree, "ghost", :root) == {:error, :not_found}
+    end
+
+    test "respects at: opt when inserting at root" do
+      tree = load_fixture("text_only")
+
+      {:ok, t2} =
+        Tree.move_to(tree, "00000000-0000-0000-0000-000000000002", :root, at: :prepend)
+
+      assert hd(t2["content"])["id"] == "00000000-0000-0000-0000-000000000002"
+    end
+
+    test "returns {:error, :parent_not_found} for unknown target parent" do
+      tree = load_fixture("text_only")
+
+      assert Tree.move_to(tree, "00000000-0000-0000-0000-000000000001", {"ghost", "one"}) ==
+               {:error, :parent_not_found}
+    end
+  end
+
   describe "find/2" do
     test "returns {:ok, node} for root-level id" do
       tree = load_fixture("text_only")

@@ -11,6 +11,16 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+### Added
+
+- Drag-and-drop in the page-builder editor. Drag from the components
+  palette onto the canvas, reorder canvas items, drag children in and
+  out of `Columns` zones. Server side: new `Athanor.Tree.move_to/4`
+  helper and `athanor:dnd_drop` event handled by `Athanor.Editor.Live`.
+  Client side: `AthanorHooks` exported from `assets/js/athanor.js`
+  with two hooks (`AthanorDragSource`, `AthanorDropZone`) — wire into
+  your `LiveSocket` `hooks:`. Native HTML5 DnD, no JS deps.
+
 ## [0.1.0-beta.1] - 2026-06-02
 
 First public beta. API may shift before `0.1.0` based on early

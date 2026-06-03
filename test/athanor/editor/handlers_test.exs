@@ -224,6 +224,149 @@ defmodule Athanor.Editor.HandlersTest do
     end
   end
 
+  # ─── do_dnd_drop ───────────────────────────────────────────────────────
+
+  describe "do_dnd_drop palette → root" do
+    test "inserts new component at the given root index" do
+      state = %State{
+        State.new()
+        | content: %{
+            "content" => [
+              %{"id" => "a", "type" => "fake", "props" => %{}},
+              %{"id" => "b", "type" => "fake", "props" => %{}}
+            ]
+          }
+      }
+
+      params = %{
+        "source" => "palette",
+        "type" => "fake",
+        "target_parent_id" => "root",
+        "target_zone" => "content",
+        "target_index" => 1
+      }
+
+      new_state =
+        EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket(content: state.content))
+
+      ids = Enum.map(new_state.content["content"], & &1["id"])
+      assert length(ids) == 3
+      assert Enum.at(ids, 0) == "a"
+      assert Enum.at(ids, 2) == "b"
+      # New component lands at index 1, gets a fresh id + auto-selected.
+      assert new_state.selected_component_id == Enum.at(ids, 1)
+    end
+
+    test "applies seed_default_props/3 from consumer" do
+      state = State.new()
+
+      params = %{
+        "source" => "palette",
+        "type" => "with_seed",
+        "target_parent_id" => "root",
+        "target_zone" => "content",
+        "target_index" => 0
+      }
+
+      new_state = EditorLive.do_dnd_drop(state, SeedingConsumer, params, mock_socket())
+      [node] = new_state.content["content"]
+      assert node["props"]["seeded"] == "yes"
+    end
+  end
+
+  describe "do_dnd_drop tree → root reorder" do
+    test "moves an existing top-level node to a new index" do
+      content = %{
+        "content" => [
+          %{"id" => "a", "type" => "fake", "props" => %{}},
+          %{"id" => "b", "type" => "fake", "props" => %{}},
+          %{"id" => "c", "type" => "fake", "props" => %{}}
+        ]
+      }
+
+      state = %State{State.new() | content: content}
+
+      params = %{
+        "source" => "tree",
+        "node_id" => "a",
+        "target_parent_id" => "root",
+        "target_zone" => "content",
+        "target_index" => 2
+      }
+
+      new_state =
+        EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket(content: content))
+
+      ids = Enum.map(new_state.content["content"], & &1["id"])
+      assert ids == ["b", "c", "a"] or ids == ["b", "a", "c"]
+    end
+
+    test "no-op when source = target index" do
+      content = %{
+        "content" => [
+          %{"id" => "a", "type" => "fake", "props" => %{}},
+          %{"id" => "b", "type" => "fake", "props" => %{}}
+        ]
+      }
+
+      state = %State{State.new() | content: content}
+
+      params = %{
+        "source" => "tree",
+        "node_id" => "a",
+        "target_parent_id" => "root",
+        "target_zone" => "content",
+        "target_index" => 0
+      }
+
+      new_state =
+        EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket(content: content))
+
+      assert new_state.content == content
+    end
+  end
+
+  describe "do_dnd_drop tree → zone reparent" do
+    test "moves a root node into a Columns zone" do
+      content = %{
+        "content" => [
+          %{
+            "id" => "cols",
+            "type" => "columns",
+            "props" => %{"zones" => %{"one" => [], "two" => []}}
+          },
+          %{"id" => "x", "type" => "fake", "props" => %{}}
+        ]
+      }
+
+      state = %State{State.new() | content: content}
+
+      params = %{
+        "source" => "tree",
+        "node_id" => "x",
+        "target_parent_id" => "cols",
+        "target_zone" => "one",
+        "target_index" => 0
+      }
+
+      new_state =
+        EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket(content: content))
+
+      root_ids = Enum.map(new_state.content["content"], & &1["id"])
+      assert root_ids == ["cols"]
+      [cols_after] = new_state.content["content"]
+      assert Enum.map(cols_after["props"]["zones"]["one"], & &1["id"]) == ["x"]
+    end
+  end
+
+  describe "do_dnd_drop error paths" do
+    test "unknown source returns state unchanged" do
+      state = State.new()
+      params = %{"source" => "bogus"}
+      assert EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket()) == state
+    end
+  end
+
   # ─── save ──────────────────────────────────────────────────────────────
 
   describe "save handler" do

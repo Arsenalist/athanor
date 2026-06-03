@@ -261,6 +261,11 @@ defmodule Athanor.Editor do
     <div data-testid="athanor-canvas" class={["mx-auto", @viewport_class]}>
       <%= if @nodes == [] do %>
         <div
+          id="athanor-canvas-empty-dropzone"
+          phx-hook="AthanorDropZone"
+          data-athanor-target-parent-id="root"
+          data-athanor-target-zone="content"
+          data-athanor-target-index="0"
           class="flex flex-col items-center justify-center text-center py-16 px-6 rounded-xl border-2 border-dashed border-base-300 bg-base-100/40"
           data-testid="athanor-canvas-empty"
         >
@@ -268,12 +273,25 @@ defmodule Athanor.Editor do
             <i class="fas fa-cube text-base-content/40"></i>
           </div>
           <p class="text-sm font-medium text-base-content/70">No components yet</p>
-          <p class="text-xs text-base-content/50 mt-1">Pick one from the left panel to begin.</p>
+          <p class="text-xs text-base-content/50 mt-1">
+            Drag a component from the left panel — or pick one to add it.
+          </p>
         </div>
       <% else %>
-        <div class="flex flex-col gap-3">
+        <div
+          id="athanor-canvas-dropzone"
+          phx-hook="AthanorDropZone"
+          data-athanor-target-parent-id="root"
+          data-athanor-target-zone="content"
+          class="flex flex-col gap-3"
+        >
           <div
             :for={node <- @nodes}
+            id={"athanor-canvas-item-" <> node["id"]}
+            phx-hook="AthanorDragSource"
+            data-athanor-source="tree"
+            data-athanor-node-id={node["id"]}
+            data-athanor-drop-item="true"
             class="group/canvas-item relative"
             data-testid="athanor-canvas-item"
           >
@@ -387,6 +405,10 @@ defmodule Athanor.Editor do
               phx-click="add_component"
               phx-value-type={meta.type}
               aria-label={"Add #{meta.label} component"}
+              id={"athanor-palette-" <> meta.type}
+              phx-hook="AthanorDragSource"
+              data-athanor-source="palette"
+              data-athanor-type={meta.type}
               class="group flex flex-col items-center gap-1.5 px-2 py-3 min-h-[88px] rounded-lg bg-base-200/50 hover:bg-primary/5 border border-transparent hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors duration-150"
             >
               <div class="w-9 h-9 rounded-md flex items-center justify-center bg-base-100 border border-base-300/40 group-hover:border-primary/40 group-hover:bg-primary/10 text-base-content/70 group-hover:text-primary transition-colors">
