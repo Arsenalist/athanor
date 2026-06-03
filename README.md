@@ -52,16 +52,13 @@ defmodule MyApp.Components.Hero do
   use Phoenix.Component
 
   @impl Athanor.Component
-  def metadata do
-    %{type: "hero", label: "Hero", icon: "fa-image", category: :content}
-  end
+  def metadata, do: %{type: "hero", label: "Hero", icon: "fa-image"}
 
   @impl Athanor.Component
   def fields do
     [
-      {"title", :text, label: "Title", placeholder: "Headline"},
-      {"subtitle", :textarea, label: "Subtitle"},
-      {"cta_label", :text, label: "Button label"}
+      {"title", :text, label: "Title"},
+      {"subtitle", :textarea, label: "Subtitle"}
     ]
   end
 
@@ -71,8 +68,7 @@ defmodule MyApp.Components.Hero do
     ~H"""
     <section class="py-24 text-center">
       <h1 class="text-5xl font-bold">{@title}</h1>
-      <p class="mt-4 text-lg text-base-content/70">{@subtitle}</p>
-      <button class="btn btn-primary mt-8">{@cta_label}</button>
+      <p class="mt-4 text-lg">{@subtitle}</p>
     </section>
     """
   end
@@ -88,41 +84,71 @@ config :athanor, components: [MyApp.Components.Hero]
 
 ### 3. Mount the editor
 
+Pages store one field — `editor_content` — that is the whole tree
+(`%{"content" => [...]}`). Editor and storefront both read/write the
+same map.
+
 ```elixir
 defmodule MyAppWeb.PageEditorLive do
   use Athanor.Editor.Live
 
   @impl Athanor.Editor
-  def load(%{"id" => id}, _session, socket) do
+  def load(%{"id" => id}, _session, _socket) do
     page = MyApp.Pages.get_page!(id)
 
     {:ok,
      %{
-       content: page.content,            # %{"content" => [...]}
-       metadata: page.metadata,           # %{"title" => "...", ...}
-       ctx_assigns: %{account_id: socket.assigns.current_user.account_id}
+       content: page.editor_content || %{"content" => []},
+       metadata: %{},
+       ctx_assigns: %{}
      }}
   end
 
   @impl Athanor.Editor
-  def save(socket, %{content: content, metadata: metadata}) do
-    page = socket.assigns.page
-    MyApp.Pages.update_page(page, %{content: content, metadata: metadata})
+  def save(socket, %{content: content}) do
+    MyApp.Pages.update_page(socket.assigns.page, %{editor_content: content})
   end
 end
 ```
 
-Add the route:
+Wire the route:
 
 ```elixir
 live "/admin/pages/:id/edit", MyAppWeb.PageEditorLive
 ```
 
-That's the whole integration. Athanor renders the canvas, the
-components palette, the config panel with auto-generated forms (one
-input per `fields/0` entry), the formatting tab (alignment / colors /
-padding / margin / borders), a viewport switcher, and a Save button
-wired to your `save/2`.
+### 4. Render the saved page on the storefront
+
+Same `editor_content` map, no editor chrome — `Athanor.Renderer.tree/1`
+dispatches each node to its component's `render/3`.
+
+```elixir
+defmodule MyAppWeb.PageLive do
+  use MyAppWeb, :live_view
+
+  def mount(%{"slug" => slug}, _session, socket) do
+    page = MyApp.Pages.get_page_by_slug!(slug)
+    {:ok, assign(socket, :page, page)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <Athanor.Renderer.tree
+      tree={@page.editor_content}
+      ctx={Athanor.Ctx.new()}
+      edit_mode={false}
+    />
+    """
+  end
+end
+```
+
+That's the whole integration. The editor canvas, components palette,
+auto-generated config forms (one input per `fields/0` entry), the
+formatting tab (alignment / colors / padding / margin / borders), a
+viewport switcher, and a Save button all come from `use
+Athanor.Editor.Live`. Your storefront renders the same tree without
+any of that chrome.
 
 ## Concepts
 
