@@ -218,6 +218,7 @@ defmodule Athanor.Components.Columns do
             :for={child <- Map.get(@zones, zone_name, [])}
             id={if @edit_mode?, do: "athanor-zone-child-#{child["id"]}", else: nil}
             phx-hook={if @edit_mode?, do: "AthanorDragSource", else: nil}
+            draggable={if @edit_mode?, do: "true", else: nil}
             data-athanor-source={if @edit_mode?, do: "tree", else: nil}
             data-athanor-node-id={if @edit_mode?, do: child["id"], else: nil}
             data-athanor-drop-item={if @edit_mode?, do: "true", else: nil}

@@ -289,6 +289,7 @@ defmodule Athanor.Editor do
             :for={node <- @nodes}
             id={"athanor-canvas-item-" <> node["id"]}
             phx-hook="AthanorDragSource"
+            draggable="true"
             data-athanor-source="tree"
             data-athanor-node-id={node["id"]}
             data-athanor-drop-item="true"
@@ -407,6 +408,7 @@ defmodule Athanor.Editor do
               aria-label={"Add #{meta.label} component"}
               id={"athanor-palette-" <> meta.type}
               phx-hook="AthanorDragSource"
+              draggable="true"
               data-athanor-source="palette"
               data-athanor-type={meta.type}
               class="group flex flex-col items-center gap-1.5 px-2 py-3 min-h-[88px] rounded-lg bg-base-200/50 hover:bg-primary/5 border border-transparent hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 transition-colors duration-150"

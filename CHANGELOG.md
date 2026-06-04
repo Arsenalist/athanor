@@ -11,6 +11,8 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.2] - 2026-06-03
+
 ### Added
 
 - Drag-and-drop in the page-builder editor. Drag from the components
@@ -20,6 +22,8 @@ changes; the minor version is bumped for each one. See
   Client side: `AthanorHooks` exported from `assets/js/athanor.js`
   with two hooks (`AthanorDragSource`, `AthanorDropZone`) — wire into
   your `LiveSocket` `hooks:`. Native HTML5 DnD, no JS deps.
+- `package.json` + `assets/js/` shipped in the Hex tarball so consumers
+  can `import "athanor"` directly through esbuild module resolution.
 
 ## [0.1.0-beta.1] - 2026-06-02
 
@@ -72,5 +76,6 @@ during the beta window.
   Athanor.Component module as the `:page_settings_component` opt and
   the library auto-renders its `fields/0` at the top of the sidebar.
 
-[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.1...HEAD
+[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.2...HEAD
+[0.1.0-beta.2]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.1
