@@ -15,6 +15,7 @@ defmodule Athanor.Editor.LiveTest do
   use ExUnit.Case, async: true
   use Phoenix.Component
 
+  alias Athanor.Editor.Live, as: EditorLive
   alias Athanor.Editor.State
 
   # ─── fake consumer modules ─────────────────────────────────────────────
@@ -85,6 +86,31 @@ defmodule Athanor.Editor.LiveTest do
     end
   end
 
+  defmodule OutletOverrideConsumer do
+    use Athanor.Editor.Live
+    @impl Athanor.Editor
+    def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
+    @impl Athanor.Editor
+    def save(_, _), do: {:ok, :saved}
+
+    @impl Athanor.Editor
+    def render_outlet(assigns), do: ~H"<div data-testid='custom-outlet'>PICKER</div>"
+  end
+
+  defmodule AssetConsumer do
+    use Athanor.Editor.Live
+    @impl Athanor.Editor
+    def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
+    @impl Athanor.Editor
+    def save(_, _), do: {:ok, :saved}
+
+    @impl Athanor.Editor
+    def handle_asset_request(socket, req) do
+      send(self(), {:asset_request, req})
+      {:noreply, socket}
+    end
+  end
+
   # ─── macro mechanics ───────────────────────────────────────────────────
 
   describe "use Athanor.Editor.Live" do
@@ -123,6 +149,199 @@ defmodule Athanor.Editor.LiveTest do
 
       refute rendered_iodata_to_string(default) =~ "custom-actions"
       assert rendered_iodata_to_string(custom) =~ "custom-actions"
+    end
+
+    test "default render_outlet renders nothing and is overridable" do
+      assigns = %{}
+      refute rendered_iodata_to_string(MinimalConsumer.render_outlet(assigns)) =~ "custom-outlet"
+
+      assert rendered_iodata_to_string(OutletOverrideConsumer.render_outlet(assigns)) =~
+               "custom-outlet"
+    end
+
+    test "injects render_outlet/1" do
+      assert function_exported?(MinimalConsumer, :render_outlet, 1)
+    end
+  end
+
+  describe "render_outlet in the shell" do
+    test "override markup appears in the editor modals layer" do
+      html = rendered_iodata_to_string(render_shell(OutletOverrideConsumer))
+      assert html =~ "athanor-editor-modals"
+      assert html =~ "custom-outlet"
+    end
+
+    test "default outlet adds no extra markup" do
+      html = rendered_iodata_to_string(render_shell(MinimalConsumer))
+      refute html =~ "custom-outlet"
+    end
+  end
+
+  describe "handle_event athanor_asset_request" do
+    test "routes to the consumer's handle_asset_request with a built AssetRequest" do
+      socket =
+        mock_socket(
+          content: %{
+            "content" => [
+              %{"id" => "n1", "type" => "x", "props" => %{"hero" => %{"url" => "u0"}}}
+            ]
+          }
+        )
+
+      params = %{"node" => "n1", "key" => "hero", "accept" => "image/*", "max" => "5"}
+
+      {:noreply, _} =
+        EditorLive.handle_event(AssetConsumer, "athanor_asset_request", params, socket)
+
+      assert_receive {:asset_request, req}
+      assert req.node_id == "n1"
+      assert req.key == "hero"
+      assert req.accept == "image/*"
+      assert req.max == 5
+      assert req.current == %{"url" => "u0"}
+    end
+
+    test "multiple flag and page-settings current lookup" do
+      socket = mock_socket(metadata: %{"gallery" => [%{"url" => "a"}]})
+      params = %{"node" => "page-settings", "key" => "gallery", "multiple" => "true"}
+
+      {:noreply, _} =
+        EditorLive.handle_event(AssetConsumer, "athanor_asset_request", params, socket)
+
+      assert_receive {:asset_request, req}
+      assert req.multiple == true
+      assert req.current == [%{"url" => "a"}]
+    end
+
+    test "does not crash when the consumer does not implement handle_asset_request/2" do
+      socket = mock_socket()
+      params = %{"node" => "n1", "key" => "hero"}
+
+      # pending is still set (so render_outlet can show a picker); the optional
+      # consumer callback is simply not invoked.
+      {:noreply, s} =
+        EditorLive.handle_event(MinimalConsumer, "athanor_asset_request", params, socket)
+
+      assert %Athanor.Editor.AssetRequest{node_id: "n1", key: "hero"} = s.assigns.asset_request
+    end
+  end
+
+  describe "asset_request pending lifecycle" do
+    test "request sets pending state (even without a consumer callback)" do
+      socket = mock_socket()
+      params = %{"node" => "n1", "key" => "hero"}
+
+      {:noreply, s} =
+        EditorLive.handle_event(MinimalConsumer, "athanor_asset_request", params, socket)
+
+      assert %Athanor.Editor.AssetRequest{node_id: "n1", key: "hero"} = s.assigns.asset_request
+    end
+
+    test "athanor_asset_cancel event clears pending" do
+      socket =
+        mock_socket() |> Phoenix.Component.assign(:asset_request, pending("n1", "hero", nil))
+
+      {:noreply, s} =
+        EditorLive.handle_event(MinimalConsumer, "athanor_asset_cancel", %{}, socket)
+
+      assert s.assigns.asset_request == nil
+    end
+
+    test ":athanor_asset_cancel message clears pending (closure-based close)" do
+      socket =
+        mock_socket() |> Phoenix.Component.assign(:asset_request, pending("n1", "hero", nil))
+
+      {:noreply, s} = EditorLive.handle_info(MinimalConsumer, :athanor_asset_cancel, socket)
+      assert s.assigns.asset_request == nil
+    end
+
+    test "write-back to the pending key clears pending" do
+      socket =
+        mock_socket(content: %{"content" => [%{"id" => "n1", "type" => "x", "props" => %{}}]})
+        |> Phoenix.Component.assign(:asset_request, pending("n1", "hero", nil))
+
+      {:noreply, s} =
+        EditorLive.handle_info(
+          MinimalConsumer,
+          {:update_component_props, "n1", %{"hero" => %{"url" => "u"}}},
+          socket
+        )
+
+      assert s.assigns.asset_request == nil
+    end
+
+    test "unrelated-key write on the same node does NOT clear pending" do
+      socket =
+        mock_socket(content: %{"content" => [%{"id" => "n1", "type" => "x", "props" => %{}}]})
+        |> Phoenix.Component.assign(:asset_request, pending("n1", "hero", nil))
+
+      {:noreply, s} =
+        EditorLive.handle_info(
+          MinimalConsumer,
+          {:update_component_props, "n1", %{"hero" => nil, "title" => "new"}},
+          socket
+        )
+
+      assert s.assigns.asset_request != nil
+    end
+
+    test "page-settings write-back to the pending key clears pending" do
+      socket =
+        mock_socket(metadata: %{})
+        |> Phoenix.Component.assign(:asset_request, pending("page-settings", "image", nil))
+
+      {:noreply, s} =
+        EditorLive.handle_info(
+          MinimalConsumer,
+          {:update_component_props, "page-settings", %{"image" => %{"url" => "u"}}},
+          socket
+        )
+
+      assert s.assigns.asset_request == nil
+    end
+
+    test "select_component / close_config / remove_component clear pending" do
+      base =
+        mock_socket(content: %{"content" => [%{"id" => "n1", "type" => "x", "props" => %{}}]})
+        |> Phoenix.Component.assign(:asset_request, pending("n1", "hero", nil))
+
+      {:noreply, s1} =
+        EditorLive.handle_event(MinimalConsumer, "select_component", %{"id" => "n1"}, base)
+
+      assert s1.assigns.asset_request == nil
+
+      {:noreply, s2} = EditorLive.handle_event(MinimalConsumer, "close_config", %{}, base)
+      assert s2.assigns.asset_request == nil
+
+      {:noreply, s3} =
+        EditorLive.handle_event(MinimalConsumer, "remove_component", %{"id" => "n1"}, base)
+
+      assert s3.assigns.asset_request == nil
+    end
+  end
+
+  describe "handle_event athanor_asset_remove" do
+    test "removes the descriptor with the matching url from a gallery list" do
+      socket =
+        mock_socket(
+          content: %{
+            "content" => [
+              %{
+                "id" => "n1",
+                "type" => "x",
+                "props" => %{"gallery" => [%{"url" => "a"}, %{"url" => "b"}]}
+              }
+            ]
+          }
+        )
+
+      params = %{"node" => "n1", "key" => "gallery", "url" => "a"}
+
+      {:noreply, new_socket} =
+        EditorLive.handle_event(AssetConsumer, "athanor_asset_remove", params, socket)
+
+      {:ok, node} = Athanor.Tree.find(new_socket.assigns.content, "n1")
+      assert node["props"]["gallery"] == [%{"url" => "b"}]
     end
   end
 
@@ -227,5 +446,42 @@ defmodule Athanor.Editor.LiveTest do
 
   defp rendered_to_iodata(%Phoenix.LiveView.Rendered{} = rendered) do
     Phoenix.HTML.Safe.to_iodata(rendered)
+  end
+
+  defp render_shell(consumer) do
+    assigns = %{
+      __changed__: %{},
+      __consumer__: consumer,
+      __page_settings__: nil,
+      content: %{"content" => []},
+      metadata: %{},
+      ctx: Athanor.Ctx.new(edit_mode?: true),
+      selected_component_id: nil,
+      column_picker: nil,
+      preview_viewport: :desktop,
+      show_components_panel: true
+    }
+
+    Athanor.Editor.Live.shell_render(assigns)
+  end
+
+  defp pending(node_id, key, current) do
+    %Athanor.Editor.AssetRequest{node_id: node_id, key: key, current: current}
+  end
+
+  defp mock_socket(opts \\ []) do
+    %Phoenix.LiveView.Socket{
+      assigns: %{
+        __changed__: %{},
+        flash: %{},
+        content: opts[:content] || %{"content" => []},
+        metadata: opts[:metadata] || %{},
+        selected_component_id: opts[:selected_component_id],
+        column_picker: opts[:column_picker],
+        preview_viewport: :desktop,
+        show_components_panel: true,
+        ctx: Athanor.Ctx.new()
+      }
+    }
   end
 end

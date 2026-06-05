@@ -44,8 +44,11 @@ defmodule Athanor.Component do
       ]
 
   Built-in types: `:text`, `:textarea`, `:number`, `:select`, `:color`,
-  `:checkbox`. The `:custom` type mounts a consumer-supplied module
-  implementing `Athanor.Field`. See `Athanor.Field` and `Athanor.Fields`.
+  `:checkbox`, `:asset`. The `:asset` type is a host-agnostic uploaded-asset
+  picker (image/pdf/video/...) — it ships a paste-a-URL default and emits a
+  request the host fulfills (see `Athanor.Fields` and
+  `Athanor.Editor.AssetRequest`). The `:custom` type mounts a consumer-supplied
+  module implementing `Athanor.Field`. See `Athanor.Field` and `Athanor.Fields`.
 
   ### Legacy: `editor_form/0` (LiveComponent)
 
@@ -79,7 +82,8 @@ defmodule Athanor.Component do
               optional(:placeholder) => String.t()
             }
 
-  @type field_type :: :text | :textarea | :number | :select | :color | :checkbox | :custom
+  @type field_type ::
+          :text | :textarea | :number | :select | :color | :checkbox | :asset | :custom
   @type field :: {String.t(), field_type(), keyword()}
 
   @callback default_props() :: props()

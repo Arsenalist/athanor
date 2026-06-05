@@ -34,4 +34,15 @@ defmodule Athanor.Editor.StateTest do
       assert_raise KeyError, fn -> State.new(bogus: true) end
     end
   end
+
+  describe "asset_request" do
+    test "defaults to nil" do
+      assert State.new().asset_request == nil
+    end
+
+    test "round-trips an override" do
+      req = %Athanor.Editor.AssetRequest{node_id: "n1", key: "hero"}
+      assert State.new(asset_request: req).asset_request == req
+    end
+  end
 end

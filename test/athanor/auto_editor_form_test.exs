@@ -222,4 +222,32 @@ defmodule Athanor.AutoEditorFormTest do
       assert AutoEditorForm.coerce("#ff0000", :color) == "#ff0000"
     end
   end
+
+  describe "coerce/3 — :asset paste fallback" do
+    test "a pasted URL becomes a descriptor map" do
+      assert AutoEditorForm.coerce("https://x/i.png", :asset, nil) ==
+               %{"url" => "https://x/i.png"}
+    end
+
+    test "blank clears to nil" do
+      assert AutoEditorForm.coerce("", :asset, %{"url" => "old"}) == nil
+      assert AutoEditorForm.coerce(nil, :asset, nil) == nil
+    end
+
+    test "unchanged URL preserves the existing descriptor's extras" do
+      old = %{"url" => "https://x/i.png", "alt" => "logo", "width" => 800}
+      assert AutoEditorForm.coerce("https://x/i.png", :asset, old) == old
+    end
+
+    test "changed URL rebuilds a bare descriptor" do
+      old = %{"url" => "https://x/old.png", "alt" => "logo"}
+
+      assert AutoEditorForm.coerce("https://x/new.png", :asset, old) ==
+               %{"url" => "https://x/new.png"}
+    end
+
+    test "non-asset types ignore the old arg" do
+      assert AutoEditorForm.coerce("16", :number, %{"whatever" => 1}) == 16
+    end
+  end
 end

@@ -111,9 +111,48 @@ defmodule Athanor.Editor do
               socket :: Phoenix.LiveView.Socket.t()
             ) :: map()
 
+  @doc """
+  Render arbitrary consumer-owned chrome into the editor's overlay layer.
+  Optional — library default renders nothing.
+
+  This is a **general** render outlet, not a modal-specific hook: its output
+  is placed into the shell's `:modals` slot, which is the editor's
+  fixed-position overlay layer. The consumer decides the form — a modal,
+  drawer, toast, slide-over, or an offscreen `<input type=file>`. Because
+  those are all `position: fixed`/`display: none`, DOM location is
+  irrelevant, so one outlet serves them all.
+
+  The asset picker opened in response to `c:handle_asset_request/2` is the
+  primary consumer of this outlet, but it is not asset-specific.
+
+  Receives the full LiveView assigns map (parity with `c:render_header/1`).
+  """
+  @callback render_outlet(assigns :: map()) :: Phoenix.LiveView.Rendered.t()
+
+  @doc """
+  Handle a request for an asset from an `:asset` field. Optional — when a
+  consumer does not implement it, the request is a no-op (the field's
+  paste-a-URL default still works).
+
+  Athanor builds an `%Athanor.Editor.AssetRequest{}` from the field
+  declaration + current value and hands it over. The consumer opens whatever
+  picker it wants (typically rendered via `c:render_outlet/1`) and, once an
+  asset is chosen, writes the result back via the existing
+  `{:update_component_props, node_id, props}` message. Athanor never performs
+  the upload or browse itself.
+
+  Return `{:noreply, socket}`.
+  """
+  @callback handle_asset_request(
+              socket :: Phoenix.LiveView.Socket.t(),
+              request :: Athanor.Editor.AssetRequest.t()
+            ) :: {:noreply, Phoenix.LiveView.Socket.t()}
+
   @optional_callbacks render_header: 1,
                       render_top_bar_actions: 1,
-                      seed_default_props: 3
+                      seed_default_props: 3,
+                      render_outlet: 1,
+                      handle_asset_request: 2
 
   # ─── shell function component ──────────────────────────────────────────
 

@@ -26,7 +26,8 @@ defmodule Athanor.Editor.State do
             column_picker: nil,
             preview_viewport: :desktop,
             show_components_panel: true,
-            ctx: nil
+            ctx: nil,
+            asset_request: nil
 
   @type viewport :: :desktop | :tablet | :mobile
 
@@ -37,7 +38,8 @@ defmodule Athanor.Editor.State do
           column_picker: {String.t(), String.t()} | nil,
           preview_viewport: viewport(),
           show_components_panel: boolean(),
-          ctx: Athanor.Ctx.t() | nil
+          ctx: Athanor.Ctx.t() | nil,
+          asset_request: Athanor.Editor.AssetRequest.t() | nil
         }
 
   @doc """

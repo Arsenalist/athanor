@@ -16,6 +16,18 @@ defmodule Athanor.Fields do
   - `:color`    — HTML5 `<input type="color">` (no JS dep)
   - `:checkbox` — `<input type="checkbox">` with hidden false-input so
                   unchecked submits as `"false"`
+  - `:asset`    — host-agnostic uploaded-asset picker (image/pdf/video/…).
+                  Renders neutral chrome (preview/chips + a choose/add
+                  control) and a paste-a-URL fallback. Emits a fixed
+                  `"athanor_asset_request"` event (no `phx-target`, so it
+                  bubbles to the editor LiveView) — it never uploads or
+                  browses itself. Opts: `accept:` (opaque hint forwarded to
+                  the host), `multiple:` (gallery/multi-file), `min:`/`max:`
+                  (forwarded, host-enforced). Value is an asset descriptor
+                  map `%{"url" => ..., "name" => ..., "content_type" => ...}`
+                  (single) or a list of them (`multiple: true`); opaque extra
+                  keys are preserved. See `Athanor.Editor.AssetRequest` and
+                  `c:Athanor.Editor.handle_asset_request/2`.
   - `:custom`   — mounts `<.live_component module={opts[:module]}>`
                   matching `Athanor.Field` behaviour
 
@@ -81,6 +93,7 @@ defmodule Athanor.Fields do
               opts={opts}
               props={@props}
               ctx={@ctx}
+              component_id={@component_id}
             />
           </div>
         </form>
@@ -108,6 +121,7 @@ defmodule Athanor.Fields do
   attr(:opts, :any, required: true)
   attr(:props, :map, required: true)
   attr(:ctx, Athanor.Ctx, required: true)
+  attr(:component_id, :string, default: "default")
 
   defp field(%{type: :text} = assigns) do
     ~H"""
@@ -261,6 +275,120 @@ defmodule Athanor.Fields do
     """
   end
 
+  # ─── :asset ─────────────────────────────────────────────────────────────
+  #
+  # Host-agnostic uploaded-asset picker. Athanor renders neutral chrome and
+  # emits a fixed `"athanor_asset_request"` event (no phx-target, so it
+  # bubbles to the editor LiveView) — it never uploads or browses itself. The
+  # value is an asset descriptor map `%{"url" => ..., "name" => ...,
+  # "content_type" => ...}` (single) or a list of them (`multiple: true`). A
+  # paste-a-URL input is the bare-minimal default when no host picker is wired.
+  defp field(%{type: :asset} = assigns) do
+    if assigns.opts[:multiple],
+      do: asset_multiple(assigns),
+      else: asset_single(assigns)
+  end
+
+  defp asset_multiple(assigns) do
+    assigns = assign(assigns, :assets, List.wrap(assigns.props[assigns.key]))
+
+    ~H"""
+    <div data-testid="athanor-asset-field">
+      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <div class="flex flex-wrap gap-2 mb-2">
+        <div
+          :for={asset <- @assets}
+          data-testid="athanor-asset-chip"
+          class="flex items-center gap-1 bg-base-200 rounded px-2 py-1 text-xs"
+        >
+          <img
+            :if={asset_image?(asset)}
+            src={asset_url(asset)}
+            class="w-6 h-6 rounded object-cover"
+          />
+          <i :if={!asset_image?(asset)} class="fa-regular fa-file" aria-hidden="true"></i>
+          <span>{asset_name(asset)}</span>
+          <button
+            type="button"
+            data-testid="athanor-asset-remove"
+            phx-click="athanor_asset_remove"
+            phx-value-node={@component_id}
+            phx-value-key={@key}
+            phx-value-url={asset_url(asset)}
+            aria-label={"Remove " <> (asset_name(asset) || "asset")}
+            class="text-base-content/40 hover:text-error cursor-pointer"
+          >
+            &times;
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        data-testid="athanor-asset-add"
+        phx-click="athanor_asset_request"
+        phx-value-node={@component_id}
+        phx-value-key={@key}
+        phx-value-accept={asset_accept_attr(@opts[:accept])}
+        phx-value-multiple="true"
+        phx-value-max={@opts[:max]}
+        phx-value-min={@opts[:min]}
+        class="btn btn-sm btn-outline"
+      >
+        Add
+      </button>
+    </div>
+    """
+  end
+
+  defp asset_single(assigns) do
+    value = assigns.props[assigns.key]
+
+    assigns =
+      assigns
+      |> assign(:url, asset_url(value))
+      |> assign(:name, asset_name(value))
+      |> assign(:image?, asset_image?(value))
+
+    ~H"""
+    <div data-testid="athanor-asset-field">
+      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <div
+        :if={@url}
+        data-testid="athanor-asset-preview"
+        class="mb-2 flex items-center gap-2"
+      >
+        <img :if={@image?} src={@url} class="w-auto h-24 rounded-lg border border-base-300 object-contain" />
+        <span :if={!@image?} class="flex items-center gap-2 text-sm">
+          <i class="fa-regular fa-file" aria-hidden="true"></i>{@name}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          name={@key}
+          value={@url || ""}
+          placeholder={@opts[:placeholder] || "Paste a URL…"}
+          class="input input-bordered input-sm flex-1"
+          phx-debounce={@opts[:debounce] || "300"}
+        />
+        <button
+          type="button"
+          data-testid="athanor-asset-choose"
+          phx-click="athanor_asset_request"
+          phx-value-node={@component_id}
+          phx-value-key={@key}
+          phx-value-accept={asset_accept_attr(@opts[:accept])}
+          phx-value-max={@opts[:max]}
+          phx-value-min={@opts[:min]}
+          class="btn btn-sm btn-outline"
+        >
+          Choose
+        </button>
+      </div>
+    </div>
+    """
+  end
+
   attr(:key, :string, required: true)
   attr(:opts, :any, required: true)
   attr(:props, :map, required: true)
@@ -302,6 +430,47 @@ defmodule Athanor.Fields do
 
   defp resolve_options(opts, _assigns) when is_list(opts), do: opts
   defp resolve_options(_, _), do: []
+
+  # ─── :asset helpers ─────────────────────────────────────────────────────
+  #
+  # An asset value is a descriptor map (`%{"url" => ...}`) but a bare URL
+  # string is tolerated for back-compat / the paste fallback. Athanor reads
+  # only `url`/`name`/`content_type`; all other descriptor keys are opaque.
+
+  @image_exts ~w(.jpg .jpeg .png .gif .webp .avif .svg .bmp .heic)
+
+  @doc false
+  def asset_url(value) when is_binary(value), do: value
+  def asset_url(%{"url" => url}) when is_binary(url), do: url
+  def asset_url(_), do: nil
+
+  @doc false
+  def asset_name(%{"name" => name}) when is_binary(name) and name != "", do: name
+
+  def asset_name(value) do
+    case asset_url(value) do
+      nil -> nil
+      url -> url |> String.split("/") |> List.last()
+    end
+  end
+
+  @doc false
+  def asset_image?(%{"content_type" => "image/" <> _}), do: true
+
+  def asset_image?(%{"content_type" => ct}) when is_binary(ct) and ct != "", do: false
+
+  def asset_image?(value) do
+    case asset_url(value) do
+      nil -> false
+      url -> String.downcase(Path.extname(url)) in @image_exts
+    end
+  end
+
+  # accept hint is forwarded opaque; lists are comma-joined for transport.
+  defp asset_accept_attr(nil), do: nil
+  defp asset_accept_attr(accept) when is_binary(accept), do: accept
+  defp asset_accept_attr(accept) when is_list(accept), do: Enum.join(accept, ",")
+  defp asset_accept_attr(_), do: nil
 
   defp visible?({_k, _t, opts}, props) do
     case opts[:if] do

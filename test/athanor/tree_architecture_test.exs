@@ -87,6 +87,37 @@ defmodule Athanor.TreeArchitectureTest do
     end
   end
 
+  describe "upload-agnostic boundary" do
+    # The :asset field defines only the INTENT (an asset was requested) and a
+    # minimal display contract — never the mechanism. No Athanor source may
+    # name an upload/storage primitive; those live entirely in host apps.
+    @forbidden_upload_tokens [
+      "MediaUploader",
+      "allow_upload",
+      "consume_uploaded_entries",
+      "Plug.Upload",
+      "Waffle"
+    ]
+
+    test "no lib/athanor/**/*.ex file references an upload mechanism" do
+      lib_root = Path.expand("../../lib/athanor", __DIR__)
+
+      offenders =
+        Path.wildcard(Path.join(lib_root, "**/*.ex"))
+        |> Enum.flat_map(fn path ->
+          source = File.read!(path)
+
+          for token <- @forbidden_upload_tokens, String.contains?(source, token) do
+            "#{Path.relative_to(path, File.cwd!())}: #{token}"
+          end
+        end)
+
+      assert offenders == [],
+             "Athanor must stay upload-agnostic — host apps own upload mechanics.\n" <>
+               "Offending references:\n" <> Enum.map_join(offenders, "\n", &"  - #{&1}")
+    end
+  end
+
   describe "documentation coverage" do
     test "every public function in Athanor.Tree has a @doc string" do
       {:docs_v1, _anno, _lang, _format, _module_doc, _meta, function_docs} =

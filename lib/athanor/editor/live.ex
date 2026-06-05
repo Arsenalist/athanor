@@ -107,9 +107,15 @@ defmodule Athanor.Editor.Live do
       def render_top_bar_actions(assigns),
         do: Athanor.Editor.Live.default_render_top_bar_actions(assigns)
 
+      # Default outlet renders nothing. Override to mount consumer chrome
+      # (asset picker, drawer, etc.) into the editor's overlay layer.
+      def render_outlet(assigns),
+        do: Athanor.Editor.Live.default_render_outlet(assigns)
+
       defoverridable seed_default_props: 3,
                      render_header: 1,
-                     render_top_bar_actions: 1
+                     render_top_bar_actions: 1,
+                     render_outlet: 1
     end
   end
 
@@ -131,12 +137,15 @@ defmodule Athanor.Editor.Live do
         preview_viewport: assigns[:preview_viewport] || :desktop
       })
 
+    outlet_rendered = consumer.render_outlet(assigns)
+
     assigns =
       assigns
       |> assign(:consumer, consumer)
       |> assign(:page_settings, page_settings)
       |> assign(:header_rendered, header_rendered)
       |> assign(:actions_rendered, actions_rendered)
+      |> assign(:outlet_rendered, outlet_rendered)
       |> assign(:preview_viewport, assigns[:preview_viewport] || :desktop)
 
     # Inside `<Athanor.Editor.shell>` slot bodies, `@<key>` resolves to
@@ -182,12 +191,16 @@ defmodule Athanor.Editor.Live do
 
       <:modals>
         <Athanor.Editor.zone_picker_modal column_picker={@column_picker} />
+        {@outlet_rendered}
       </:modals>
     </Athanor.Editor.shell>
     """
   end
 
   # ─── default header + actions ──────────────────────────────────────────
+
+  @doc "Default asset outlet — renders nothing. Consumers override `render_outlet/1`."
+  def default_render_outlet(assigns), do: ~H""
 
   @doc "Default barebones header — back button + optional page title."
   def default_render_header(assigns) do
@@ -383,6 +396,38 @@ defmodule Athanor.Editor.Live do
     {:noreply, do_save(consumer, socket)}
   end
 
+  # An `:asset` field requests an asset. Build the request from the field
+  # declaration (carried in phx-value attrs) + current value and hand it to
+  # the consumer. Athanor performs no upload/browse itself; when the consumer
+  # does not implement the callback the request is a no-op (the field's
+  # paste-a-URL default still works).
+  def handle_event(consumer, "athanor_asset_request", params, socket) do
+    request = build_asset_request(current_state(socket), params)
+    socket = update_state(socket, fn s -> %{s | asset_request: request} end)
+
+    if function_exported?(consumer, :handle_asset_request, 2) do
+      consumer.handle_asset_request(socket, request)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event(_consumer, "athanor_asset_cancel", _params, socket) do
+    {:noreply, update_state(socket, fn s -> %{s | asset_request: nil} end)}
+  end
+
+  # Remove one descriptor (by url) from a `multiple` asset list. Pure list
+  # editing — host-agnostic, no upload knowledge.
+  def handle_event(
+        _consumer,
+        "athanor_asset_remove",
+        %{"key" => key, "url" => url} = params,
+        socket
+      ) do
+    node_id = params["node"]
+    {:noreply, update_state(socket, &do_asset_remove(&1, node_id, key, url))}
+  end
+
   def handle_event(_consumer, _event, _params, socket) do
     {:noreply, socket}
   end
@@ -407,8 +452,16 @@ defmodule Athanor.Editor.Live do
   # documented in the user-facing `Athanor.Editor` docstring.
 
   @doc false
+  # Cancel a pending asset request via message — for host pickers whose
+  # close affordance is a callback closure (not a `phx-click` event). The
+  # closure runs in the LiveView process and can `send(self(), :athanor_asset_cancel)`.
+  def handle_info(_consumer, :athanor_asset_cancel, socket) do
+    {:noreply, update_state(socket, fn s -> %{s | asset_request: nil} end)}
+  end
+
   def handle_info(_consumer, {:update_component_props, "page-settings", new_metadata}, socket) do
-    {:noreply, update_state(socket, fn state -> %{state | metadata: new_metadata} end)}
+    socket = update_state(socket, fn state -> %{state | metadata: new_metadata} end)
+    {:noreply, maybe_clear_asset_request(socket, "page-settings", new_metadata)}
   end
 
   def handle_info(_consumer, {:update_component_props, component_id, new_props}, socket) do
@@ -416,7 +469,8 @@ defmodule Athanor.Editor.Live do
 
     case Tree.update_props(state.content, component_id, fn _ -> new_props end) do
       {:ok, new_content} ->
-        {:noreply, update_state(socket, fn s -> %{s | content: new_content} end)}
+        socket = update_state(socket, fn s -> %{s | content: new_content} end)
+        {:noreply, maybe_clear_asset_request(socket, component_id, new_props)}
 
       {:error, _} ->
         {:noreply, socket}
@@ -459,10 +513,12 @@ defmodule Athanor.Editor.Live do
   end
 
   @doc false
-  def do_select_component(%State{} = state, id), do: %{state | selected_component_id: id}
+  def do_select_component(%State{} = state, id),
+    do: %{state | selected_component_id: id, asset_request: nil}
 
   @doc false
-  def do_close_config(%State{} = state), do: %{state | selected_component_id: nil}
+  def do_close_config(%State{} = state),
+    do: %{state | selected_component_id: nil, asset_request: nil}
 
   @doc false
   def do_set_viewport(%State{} = state, vp) when vp in @viewport_strings,
@@ -532,6 +588,7 @@ defmodule Athanor.Editor.Live do
     %{
       state
       | content: updated,
+        asset_request: nil,
         selected_component_id:
           if(state.selected_component_id == id, do: nil, else: state.selected_component_id)
     }
@@ -614,6 +671,80 @@ defmodule Athanor.Editor.Live do
     end
   end
 
+  # ─── asset request / remove ────────────────────────────────────────────
+
+  @doc false
+  def build_asset_request(%State{} = state, params) do
+    node_id = params["node"]
+    key = params["key"]
+
+    %Athanor.Editor.AssetRequest{
+      node_id: node_id,
+      key: key,
+      accept: blank_to_nil(params["accept"]),
+      multiple: params["multiple"] == "true",
+      max: parse_int(params["max"]),
+      min: parse_int(params["min"]),
+      current: lookup_current(state, node_id, key)
+    }
+  end
+
+  # Clear the pending asset request only when the write actually targets the
+  # pending node AND changes the pending key's value — an unrelated edit on the
+  # same node must not close the picker.
+  defp maybe_clear_asset_request(socket, node_id, new_props) do
+    case current_state(socket).asset_request do
+      %Athanor.Editor.AssetRequest{node_id: ^node_id, key: key, current: current} ->
+        if Map.get(new_props, key) != current do
+          update_state(socket, fn s -> %{s | asset_request: nil} end)
+        else
+          socket
+        end
+
+      _ ->
+        socket
+    end
+  end
+
+  defp lookup_current(%State{metadata: metadata}, "page-settings", key),
+    do: Map.get(metadata, key)
+
+  defp lookup_current(%State{content: content}, node_id, key) do
+    case Tree.find(content, node_id) do
+      {:ok, node} -> get_in(node, ["props", key])
+      :error -> nil
+    end
+  end
+
+  @doc false
+  def do_asset_remove(%State{} = state, "page-settings", key, url) do
+    %{state | metadata: Map.update(state.metadata, key, [], &reject_asset(&1, url))}
+  end
+
+  def do_asset_remove(%State{} = state, node_id, key, url) do
+    case Tree.update_props(state.content, node_id, fn props ->
+           Map.update(props, key, [], &reject_asset(&1, url))
+         end) do
+      {:ok, content} -> %{state | content: content}
+      {:error, _} -> state
+    end
+  end
+
+  defp reject_asset(list, url) when is_list(list),
+    do: Enum.reject(list, &(Athanor.Fields.asset_url(&1) == url))
+
+  defp reject_asset(other, _url), do: other
+
+  defp parse_int(n) when is_integer(n), do: n
+
+  defp parse_int(s) when is_binary(s) and s != "",
+    do: with({n, _} <- Integer.parse(s), do: n, else: (_ -> nil))
+
+  defp parse_int(_), do: nil
+
+  defp blank_to_nil(s) when s in [nil, ""], do: nil
+  defp blank_to_nil(s), do: s
+
   # ─── socket helpers ────────────────────────────────────────────────────
 
   defp current_state(socket) do
@@ -624,7 +755,8 @@ defmodule Athanor.Editor.Live do
       column_picker: socket.assigns[:column_picker],
       preview_viewport: socket.assigns[:preview_viewport] || :desktop,
       show_components_panel: socket.assigns[:show_components_panel] != false,
-      ctx: socket.assigns[:ctx]
+      ctx: socket.assigns[:ctx],
+      asset_request: socket.assigns[:asset_request]
     }
   end
 
@@ -643,6 +775,7 @@ defmodule Athanor.Editor.Live do
     |> Phoenix.Component.assign(:preview_viewport, state.preview_viewport)
     |> Phoenix.Component.assign(:show_components_panel, state.show_components_panel)
     |> Phoenix.Component.assign(:ctx, state.ctx)
+    |> Phoenix.Component.assign(:asset_request, state.asset_request)
   end
 
   # ─── build_component ───────────────────────────────────────────────────

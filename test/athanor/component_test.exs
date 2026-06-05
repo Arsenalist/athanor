@@ -57,4 +57,26 @@ defmodule Athanor.ComponentTest do
       assert is_binary(meta.label) and meta.label != ""
     end
   end
+
+  describe "field_type typespec" do
+    test "includes :asset alongside the other built-in field types" do
+      {:ok, types} = Code.Typespec.fetch_types(Athanor.Component)
+
+      {:type, {:field_type, spec, _args}} =
+        Enum.find(types, fn {:type, {name, _, _}} -> name == :field_type end)
+
+      atoms = field_type_atoms(spec)
+
+      for t <- [:text, :textarea, :number, :select, :color, :checkbox, :custom, :asset] do
+        assert t in atoms, "field_type spec missing #{inspect(t)}"
+      end
+    end
+
+    # field_type is a union of `:atom` literals — flatten it to the atoms.
+    defp field_type_atoms({:type, _, :union, members}),
+      do: Enum.flat_map(members, &field_type_atoms/1)
+
+    defp field_type_atoms({:atom, _, value}), do: [value]
+    defp field_type_atoms(_), do: []
+  end
 end

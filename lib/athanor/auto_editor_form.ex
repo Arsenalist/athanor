@@ -83,7 +83,7 @@ defmodule Athanor.AutoEditorForm do
       params
       |> Map.take(Map.keys(fields))
       |> Enum.reduce(old, fn {key, raw}, acc ->
-        Map.put(acc, key, coerce(raw, fields[key]))
+        Map.put(acc, key, coerce(raw, fields[key], Map.get(old, key)))
       end)
       |> then(&apply_resolve_data(socket.assigns.component_module, old, &1))
 
@@ -97,7 +97,7 @@ defmodule Athanor.AutoEditorForm do
   verify the cascade without socket plumbing.
   """
   def apply_resolve_data(module, old, new) do
-    if function_exported?(module, :resolve_data, 2) do
+    if Code.ensure_loaded?(module) and function_exported?(module, :resolve_data, 2) do
       module.resolve_data(old, new)
     else
       new
@@ -130,6 +130,22 @@ defmodule Athanor.AutoEditorForm do
   def coerce(value, :checkbox), do: !!value
 
   def coerce(value, _type), do: value
+
+  @doc """
+  Type coercion with access to the field's previous value.
+
+  Used for `:asset`, whose paste-a-URL fallback wraps a bare URL string into
+  an asset descriptor map while preserving opaque extras (`alt`, dimensions,
+  …) when the URL is unchanged. All other types ignore `old` and delegate to
+  `coerce/2`.
+  """
+  def coerce(raw, :asset, old), do: coerce_asset(raw, old)
+  def coerce(raw, type, _old), do: coerce(raw, type)
+
+  defp coerce_asset(url, _old) when url in [nil, ""], do: nil
+  defp coerce_asset(url, %{"url" => url} = old) when is_map(old), do: old
+  defp coerce_asset(url, _old) when is_binary(url), do: %{"url" => url}
+  defp coerce_asset(_url, _old), do: nil
 
   @impl true
   def render(assigns) do

@@ -105,6 +105,28 @@ defmodule Athanor.FieldsTest do
     def metadata, do: %{type: "no_fields", label: "Z"}
   end
 
+  defmodule AssetSingle do
+    use Athanor.Component
+    def metadata, do: %{type: "asset_single", label: "AS"}
+    def fields, do: [{"hero", :asset, label: "Hero", accept: "image/*"}]
+  end
+
+  defmodule AssetMultiple do
+    use Athanor.Component
+    def metadata, do: %{type: "asset_multi", label: "AM"}
+
+    def fields,
+      do: [{"gallery", :asset, label: "Gallery", accept: "image/*", multiple: true, max: 12}]
+  end
+
+  defmodule AssetConditional do
+    use Athanor.Component
+    def metadata, do: %{type: "asset_cond", label: "AC"}
+
+    def fields,
+      do: [{"hero", :asset, label: "Hero", if: fn props -> props["enabled"] == true end}]
+  end
+
   # ---------------------------------------------------------------------------
   # Test helper
   # ---------------------------------------------------------------------------
@@ -408,6 +430,122 @@ defmodule Athanor.FieldsTest do
 
       html = render_fields(CrashingIfFake, %{})
       assert html =~ "X"
+    end
+  end
+
+  describe ":asset (single)" do
+    test "renders the asset field with a stable testid and no module ref" do
+      html = render_fields(AssetSingle, %{})
+      assert html =~ ~s(data-testid="athanor-asset-field")
+      assert html =~ "Hero"
+      refute html =~ "FakeCustomLC"
+    end
+
+    test "image descriptor renders a thumbnail from url" do
+      html =
+        render_fields(AssetSingle, %{
+          "hero" => %{
+            "url" => "https://x/i.png",
+            "name" => "i.png",
+            "content_type" => "image/png"
+          }
+        })
+
+      assert html =~ ~s(data-testid="athanor-asset-preview")
+      assert html =~ ~s(<img)
+      assert html =~ "https://x/i.png"
+    end
+
+    test "non-image descriptor renders the name with no thumbnail" do
+      html =
+        render_fields(AssetSingle, %{
+          "hero" => %{
+            "url" => "https://x/d.pdf",
+            "name" => "d.pdf",
+            "content_type" => "application/pdf"
+          }
+        })
+
+      assert html =~ "d.pdf"
+      refute html =~ ~s(<img)
+    end
+
+    test "missing content_type but image extension still renders a thumbnail" do
+      html = render_fields(AssetSingle, %{"hero" => %{"url" => "https://x/p.png"}})
+      assert html =~ ~s(<img)
+      assert html =~ "https://x/p.png"
+    end
+
+    test "opaque extra keys are preserved in the rendered URL input value" do
+      html =
+        render_fields(AssetSingle, %{
+          "hero" => %{"url" => "https://x/i.png", "alt" => "logo", "width" => 800}
+        })
+
+      # the url drives the text input; extras don't break rendering
+      assert html =~ ~s(value="https://x/i.png")
+    end
+
+    test "choose control emits athanor_asset_request with key and NO phx-target" do
+      html = render_fields(AssetSingle, %{})
+      assert html =~ ~s(phx-click="athanor_asset_request")
+      assert html =~ ~s(phx-value-key="hero")
+      # the choose button must bubble to the LiveView, not the AutoEditorForm LC
+      refute html =~ ~r/phx-click="athanor_asset_request"[^>]*phx-target/
+    end
+
+    test "renders a URL input named for the field key (paste fallback)" do
+      html = render_fields(AssetSingle, %{})
+      assert html =~ ~s(name="hero")
+    end
+
+    test ":if predicate hides the asset field when false" do
+      refute render_fields(AssetConditional, %{"enabled" => false}) =~
+               ~s(data-testid="athanor-asset-field")
+
+      assert render_fields(AssetConditional, %{"enabled" => true}) =~
+               ~s(data-testid="athanor-asset-field")
+    end
+  end
+
+  describe ":asset (multiple)" do
+    test "empty list renders an add control and zero chips" do
+      html = render_fields(AssetMultiple, %{"gallery" => []})
+      assert html =~ ~s(data-testid="athanor-asset-add")
+      refute html =~ ~s(data-testid="athanor-asset-chip")
+    end
+
+    test "renders one chip per descriptor labelled by name + per-item remove" do
+      html =
+        render_fields(AssetMultiple, %{
+          "gallery" => [
+            %{"url" => "https://x/a.png", "name" => "a.png", "content_type" => "image/png"},
+            %{"url" => "https://x/b.png", "name" => "b.png", "content_type" => "image/png"}
+          ]
+        })
+
+      chips = html |> String.split(~s(data-testid="athanor-asset-chip")) |> length()
+      assert chips - 1 == 2
+      assert html =~ "a.png"
+      assert html =~ "b.png"
+      assert html =~ ~s(data-testid="athanor-asset-remove")
+    end
+
+    test "add control emits athanor_asset_request carrying the key" do
+      html = render_fields(AssetMultiple, %{"gallery" => []})
+      assert html =~ ~s(phx-click="athanor_asset_request")
+      assert html =~ ~s(phx-value-key="gallery")
+    end
+  end
+
+  describe ":asset write-back (statelessness)" do
+    test "preview reflects whatever value is passed — no retained state" do
+      a = render_fields(AssetSingle, %{"hero" => %{"url" => "https://x/a.png"}})
+      b = render_fields(AssetSingle, %{"hero" => %{"url" => "https://x/b.png"}})
+      assert a =~ "https://x/a.png"
+      refute a =~ "https://x/b.png"
+      assert b =~ "https://x/b.png"
+      refute b =~ "https://x/a.png"
     end
   end
 end

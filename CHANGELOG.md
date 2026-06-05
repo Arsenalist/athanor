@@ -11,6 +11,36 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.3] - 2026-06-05
+
+### Added
+
+- Built-in `:asset` field type — a host-agnostic picker for uploaded
+  assets (image / pdf / video / anything). Ships a paste-a-URL default
+  and emits a fixed `"athanor_asset_request"` event the host fulfils;
+  Athanor never performs or names an upload. Field opts: `accept:`
+  (opaque hint, forwarded), `multiple:` (gallery / multi-file),
+  `min:` / `max:` (forwarded, host-enforced). Value is an asset
+  descriptor map `%{"url" => ..., "name" => ..., "content_type" => ...}`
+  (single) or a list of them (`multiple: true`); opaque extra keys are
+  preserved. Single-value paste-URL participates in the existing
+  `update_props` form; gallery items get add / remove chrome and an
+  `athanor_asset_remove` handler.
+- `Athanor.Editor.AssetRequest` struct describing a pending request
+  (`node_id`, `key`, `accept`, `multiple`, `min`, `max`, `current`).
+- `c:Athanor.Editor.handle_asset_request/2` — optional host callback,
+  invoked when an `:asset` field is activated. Default is a no-op (the
+  field degrades to paste-a-URL).
+- `c:Athanor.Editor.render_outlet/1` — optional, general consumer render
+  outlet fed into the shell's `:modals` layer. Host mounts arbitrary
+  fixed/offscreen chrome (asset picker, drawer, toast) here. Overridable
+  alongside `render_header/1` and `render_top_bar_actions/1`.
+- Editor pending-request lifecycle: `Athanor.Editor.State.asset_request`
+  tracks the open picker; cleared on the matching write-back (only when
+  the pending key's value changes), on `"athanor_asset_cancel"` (event
+  or `:athanor_asset_cancel` message), and on
+  select / close-config / remove navigation.
+
 ## [0.1.0-beta.2] - 2026-06-03
 
 ### Added
@@ -76,6 +106,7 @@ during the beta window.
   Athanor.Component module as the `:page_settings_component` opt and
   the library auto-renders its `fields/0` at the top of the sidebar.
 
-[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.2...HEAD
+[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.3...HEAD
+[0.1.0-beta.3]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.1
