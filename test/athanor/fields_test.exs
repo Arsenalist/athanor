@@ -58,6 +58,44 @@ defmodule Athanor.FieldsTest do
     end
   end
 
+  defmodule RadioOnly do
+    use Athanor.Component
+    def metadata, do: %{type: "radio_only", label: "R"}
+
+    def fields,
+      do: [
+        {"level", :radio, label: "Level", options: [{"H1", "1"}, {"H2", "2"}, {"H3", "3"}]}
+      ]
+  end
+
+  defmodule RadioFnOnly do
+    use Athanor.Component
+    def metadata, do: %{type: "radio_fn_only", label: "RF"}
+
+    def fields,
+      do: [{"venue_id", :radio, label: "Venue", options: &__MODULE__.load_options/1}]
+
+    def load_options(ctx) do
+      [
+        {"Iron Horse (acct: #{ctx.account_id})", "v_1"},
+        {"Underground", "v_2"}
+      ]
+    end
+  end
+
+  defmodule RadioConditional do
+    use Athanor.Component
+    def metadata, do: %{type: "radio_cond", label: "RC"}
+
+    def fields,
+      do: [
+        {"align", :radio,
+         label: "Align",
+         options: [{"Left", "left"}, {"Right", "right"}],
+         if: fn props -> props["enabled"] == true end}
+      ]
+  end
+
   defmodule ColorOnly do
     use Athanor.Component
     def metadata, do: %{type: "color_only", label: "C"}
@@ -268,6 +306,69 @@ defmodule Athanor.FieldsTest do
       # Renders an empty select, no crash.
       html = render_fields_ctx(CrashingFnFake, %{}, ctx)
       assert html =~ "<select"
+    end
+  end
+
+  describe ":radio" do
+    test "renders one radio input per option, all sharing the field name" do
+      html = render_fields(RadioOnly, %{"level" => "2"})
+
+      assert html =~ ~s(<input type="radio")
+      # one input per declared option, all named "level"
+      assert length(Regex.scan(~r/<input type="radio"[^>]*name="level"/, html)) == 3
+      assert html =~ ~s(value="1")
+      assert html =~ ~s(value="2")
+      assert html =~ ~s(value="3")
+      # labels rendered
+      assert html =~ "H1"
+      assert html =~ "H2"
+      assert html =~ "H3"
+    end
+
+    test "marks the matching option checked" do
+      html = render_fields(RadioOnly, %{"level" => "2"})
+
+      assert html =~ ~r/<input type="radio"[^>]*value="2"[^>]*checked/
+      refute html =~ ~r/<input type="radio"[^>]*value="1"[^>]*checked/
+    end
+
+    test "integer value matches string option (toString coercion)" do
+      html = render_fields(RadioOnly, %{"level" => 3})
+      assert html =~ ~r/<input type="radio"[^>]*value="3"[^>]*checked/
+    end
+
+    test "missing/non-matching value checks no option" do
+      html = render_fields(RadioOnly, %{})
+      refute html =~ "checked"
+    end
+
+    test "options as an arity-1 function of ctx resolve at render" do
+      ctx = Athanor.Ctx.new(account_id: "acct_abc")
+      html = render_fields_ctx(RadioFnOnly, %{"venue_id" => "v_2"}, ctx)
+
+      assert html =~ "Iron Horse (acct: acct_abc)"
+      assert html =~ "Underground"
+      assert html =~ ~r/<input type="radio"[^>]*value="v_2"[^>]*checked/
+    end
+
+    test "renders the label" do
+      html = render_fields(RadioOnly, %{})
+      assert html =~ "Level"
+    end
+
+    test "honors :if conditional — omitted when false, present when true" do
+      refute render_fields(RadioConditional, %{"enabled" => false}) =~ ~s(<input type="radio")
+      assert render_fields(RadioConditional, %{"enabled" => true}) =~ ~s(<input type="radio")
+    end
+
+    test "posts selected value through the fields form (shared name, no custom event)" do
+      html = render_fields(RadioOnly, %{"level" => "1"})
+
+      # inputs live inside the single phx-change=update_props form
+      assert html =~ ~s(phx-change="update_props")
+      assert html =~ ~s(name="level")
+      # no field-specific phx-click/phx-target event
+      refute html =~ ~r/<input type="radio"[^>]*phx-/
     end
   end
 

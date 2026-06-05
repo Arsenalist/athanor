@@ -43,8 +43,10 @@ defmodule Athanor.Component do
         {"image", :custom,   label: "Image", module: MyApp.MediaPicker}
       ]
 
-  Built-in types: `:text`, `:textarea`, `:number`, `:select`, `:color`,
-  `:checkbox`, `:asset`. The `:asset` type is a host-agnostic uploaded-asset
+  Built-in types: `:text`, `:textarea`, `:number`, `:select`, `:radio`, `:color`,
+  `:checkbox`, `:asset`. The `:radio` type is a single-choice radio group sharing
+  the `:select` `options:` contract (static list or arity-1 `Ctx` function). The
+  `:asset` type is a host-agnostic uploaded-asset
   picker (image/pdf/video/...) — it ships a paste-a-URL default and emits a
   request the host fulfills (see `Athanor.Fields` and
   `Athanor.Editor.AssetRequest`). The `:custom` type mounts a consumer-supplied
@@ -83,7 +85,7 @@ defmodule Athanor.Component do
             }
 
   @type field_type ::
-          :text | :textarea | :number | :select | :color | :checkbox | :asset | :custom
+          :text | :textarea | :number | :select | :radio | :color | :checkbox | :asset | :custom
   @type field :: {String.t(), field_type(), keyword()}
 
   @callback default_props() :: props()

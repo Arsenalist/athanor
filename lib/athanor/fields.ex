@@ -13,6 +13,10 @@ defmodule Athanor.Fields do
   - `:textarea` — `<textarea>`
   - `:number`   — `<input type="number">` with optional `min`/`max`
   - `:select`   — `<select>` driven by `options:` keyword
+  - `:radio`    — radio-button group driven by the same `options:` keyword as
+                  `:select` (static `[{label, value}, …]` list or arity-1 `Ctx`
+                  function). Inline single-choice for small option sets; inputs
+                  share the field `name`.
   - `:color`    — HTML5 `<input type="color">` (no JS dep)
   - `:checkbox` — `<input type="checkbox">` with hidden false-input so
                   unchecked submits as `"false"`
@@ -192,6 +196,33 @@ defmodule Athanor.Fields do
           {label}
         </option>
       </select>
+    </div>
+    """
+  end
+
+  defp field(%{type: :radio} = assigns) do
+    # Single-choice radio group. `options:` uses the SAME contract as :select
+    # (static [{label, value}, ...] list OR an arity-1 fn of Ctx), resolved
+    # lazily here. Inputs share `name={@key}` so the browser enforces single
+    # selection and the fields form posts the checked value like any built-in.
+    options = resolve_options(assigns.opts[:options], assigns)
+    assigns = assign(assigns, :options, options)
+
+    ~H"""
+    <div>
+      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <div class="flex flex-col gap-1">
+        <label :for={{label, value} <- @options} class="flex items-center gap-2 text-sm">
+          <input
+            type="radio"
+            name={@key}
+            value={value}
+            checked={to_string(@props[@key]) == to_string(value)}
+            class="radio radio-sm"
+          />
+          {label}
+        </label>
+      </div>
     </div>
     """
   end
