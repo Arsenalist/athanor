@@ -11,6 +11,17 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.5] - 2026-06-14
+
+### Added
+
+- Drag-and-drop insertion-line indicator inside `AthanorDropZone`. On
+  `dragover` the zone gets a dashed primary outline + tinted background,
+  and a horizontal primary line (with dot endcaps) is positioned at the
+  cursor's computed insertion point between sibling drop-items. Empty
+  zones show only the outline/tint. Hook self-injects the required
+  styles into `document.head` so consumers need no additional CSS.
+
 ## [0.1.0-beta.3] - 2026-06-05
 
 ### Added

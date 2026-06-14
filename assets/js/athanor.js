@@ -29,9 +29,56 @@
 
 const PAYLOAD_MIME = "application/x-athanor-dnd"
 const DROP_INDICATOR_CLASS = "athanor-drop-target"
+const INDICATOR_ATTR = "data-athanor-indicator"
+const STYLE_ELEMENT_ID = "athanor-dnd-styles"
+
+// Inject the minimal CSS the hooks rely on (drop-zone highlight, source
+// drag-ghost opacity, insertion-line indicator). Idempotent — safe to
+// call from every hook mount.
+function ensureStylesInjected() {
+  if (document.getElementById(STYLE_ELEMENT_ID)) return
+  const style = document.createElement("style")
+  style.id = STYLE_ELEMENT_ID
+  style.textContent = `
+    .athanor-dragging { opacity: 0.5; }
+    .${DROP_INDICATOR_CLASS} {
+      outline: 2px dashed var(--color-primary, #3b82f6);
+      outline-offset: 2px;
+      background-color: color-mix(in srgb, var(--color-primary, #3b82f6) 6%, transparent);
+    }
+    [${INDICATOR_ATTR}] {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-primary, #3b82f6);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary, #3b82f6) 35%, transparent);
+      border-radius: 2px;
+      pointer-events: none;
+      transform: translateY(-1.5px);
+      display: none;
+      z-index: 20;
+    }
+    [${INDICATOR_ATTR}]::before,
+    [${INDICATOR_ATTR}]::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      background: var(--color-primary, #3b82f6);
+      transform: translateY(-50%);
+    }
+    [${INDICATOR_ATTR}]::before { left: -4px; }
+    [${INDICATOR_ATTR}]::after  { right: -4px; }
+  `
+  document.head.appendChild(style)
+}
 
 const AthanorDragSource = {
   mounted() {
+    ensureStylesInjected()
     this.el.setAttribute("draggable", "true")
     this.el.addEventListener("dragstart", (e) => {
       const payload = {
@@ -54,22 +101,36 @@ const AthanorDragSource = {
 
 const AthanorDropZone = {
   mounted() {
+    ensureStylesInjected()
+
+    // Indicator needs the zone as its positioning context.
+    if (getComputedStyle(this.el).position === "static") {
+      this.el.style.position = "relative"
+    }
+
+    this.indicator = document.createElement("div")
+    this.indicator.setAttribute(INDICATOR_ATTR, "true")
+    this.el.appendChild(this.indicator)
+
     this.el.addEventListener("dragover", (e) => {
       // Allow drop. Required — without preventDefault, "drop" never fires.
       e.preventDefault()
       e.dataTransfer.dropEffect = "move"
       this.el.classList.add(DROP_INDICATOR_CLASS)
+      updateIndicator(this.el, this.indicator, e.clientY)
     })
 
     this.el.addEventListener("dragleave", (e) => {
       // Ignore dragleave that's just into a descendant.
       if (this.el.contains(e.relatedTarget)) return
       this.el.classList.remove(DROP_INDICATOR_CLASS)
+      this.indicator.style.display = "none"
     })
 
     this.el.addEventListener("drop", (e) => {
       e.preventDefault()
       this.el.classList.remove(DROP_INDICATOR_CLASS)
+      this.indicator.style.display = "none"
 
       const raw = e.dataTransfer.getData(PAYLOAD_MIME)
       if (!raw) return
@@ -114,6 +175,46 @@ const AthanorDropZone = {
       })
     })
   },
+
+  destroyed() {
+    if (this.indicator && this.indicator.parentNode) {
+      this.indicator.parentNode.removeChild(this.indicator)
+    }
+  },
+}
+
+// Position the insertion-line indicator inside the zone at the cursor's
+// computed insertion point. For an empty zone the indicator is hidden —
+// the zone-level highlight (outline + tinted background) carries the
+// feedback alone.
+function updateIndicator(zoneEl, indicator, clientY) {
+  const items = Array.from(
+    zoneEl.querySelectorAll(":scope > [data-athanor-drop-item]")
+  )
+  if (items.length === 0) {
+    indicator.style.display = "none"
+    return
+  }
+
+  const zoneRect = zoneEl.getBoundingClientRect()
+  let idx = items.length
+  for (let i = 0; i < items.length; i++) {
+    const rect = items[i].getBoundingClientRect()
+    if (clientY < rect.top + rect.height / 2) {
+      idx = i
+      break
+    }
+  }
+
+  let y
+  if (idx < items.length) {
+    y = items[idx].getBoundingClientRect().top - zoneRect.top
+  } else {
+    y = items[items.length - 1].getBoundingClientRect().bottom - zoneRect.top
+  }
+
+  indicator.style.top = `${y + zoneEl.scrollTop}px`
+  indicator.style.display = "block"
 }
 
 // Pick an insertion index inside a drop zone based on cursor Y.
