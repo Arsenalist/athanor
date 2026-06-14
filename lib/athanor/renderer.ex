@@ -223,13 +223,8 @@ defmodule Athanor.Renderer do
   end
 
   defp implements_athanor_component?(module) do
-    case module.module_info(:attributes) do
-      attrs when is_list(attrs) ->
-        Athanor.Component in Keyword.get(attrs, :behaviour, [])
-
-      _ ->
-        false
-    end
+    attrs = module.module_info(:attributes)
+    Athanor.Component in Keyword.get(attrs, :behaviour, [])
   rescue
     _ -> false
   end

@@ -356,15 +356,13 @@ defmodule Athanor.Editor do
                 <i class="fas fa-cog text-[10px]" aria-hidden="true"></i> Configure
               </button>
             </div>
-            <div
-              class={[
-                "rounded-lg border-2 p-3 bg-base-100 transition-colors",
-                if(node["id"] == @selected_component_id,
-                  do: "border-primary",
-                  else: "border-transparent group-hover/canvas-item:border-base-300"
-                )
-              ]}
-            >
+            <div class={[
+              "rounded-lg border-2 p-3 bg-base-100 transition-colors",
+              if(node["id"] == @selected_component_id,
+                do: "border-primary",
+                else: "border-transparent group-hover/canvas-item:border-base-300"
+              )
+            ]}>
               <Renderer.node_component
                 node={node}
                 ctx={@ctx}
@@ -545,7 +543,7 @@ defmodule Athanor.Editor do
     type = node["type"]
 
     case Registry.lookup(type) do
-      nil -> String.capitalize(type || "Component")
+      nil -> String.capitalize(type)
       mod -> Map.get(mod.metadata(), :label, String.capitalize(type))
     end
   end
