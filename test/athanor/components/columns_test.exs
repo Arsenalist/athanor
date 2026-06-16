@@ -216,9 +216,46 @@ defmodule Athanor.Components.ColumnsTest do
       refute html =~ "border-dashed"
       refute html =~ "+ Add Component"
     end
+
+    test "zone wrapper declares a container-query context so children adapt to column width" do
+      node = %{
+        "id" => "c1",
+        "type" => "columns",
+        "props" => %{
+          "num_zones" => "2",
+          "zone_names" => ["one", "two"],
+          "zones" => %{"one" => [], "two" => []},
+          "vertical_align" => "top",
+          "width_distribution" => "equal"
+        }
+      }
+
+      html = render_live(node, Ctx.new(edit_mode?: false))
+      assert html =~ "@container"
+    end
   end
 
   describe "render(:live, node, ctx) — editor canvas (edit_mode? = true)" do
+    test "zone wrapper still declares a container-query context in edit mode" do
+      cb = fn zone -> Phoenix.LiveView.JS.push("show_zone_picker", value: %{zone: zone}) end
+      ctx = Ctx.new(edit_mode?: true, add_component_callback: cb)
+
+      node = %{
+        "id" => "c1",
+        "type" => "columns",
+        "props" => %{
+          "num_zones" => "2",
+          "zone_names" => ["one", "two"],
+          "zones" => %{"one" => [], "two" => []},
+          "vertical_align" => "top",
+          "width_distribution" => "equal"
+        }
+      }
+
+      html = render_live(node, ctx)
+      assert html =~ "@container"
+    end
+
     test "renders dashed-border zone chrome + per-zone Add button" do
       cb = fn zone -> Phoenix.LiveView.JS.push("show_zone_picker", value: %{zone: zone}) end
 

@@ -11,6 +11,18 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.6] - 2026-06-16
+
+### Changed
+
+- `Columns` zone wrapper now declares a `@container` query context (both
+  storefront and editor-canvas variants). Consumer components that use
+  Tailwind container-query utilities (`@sm:*`, `@lg:*`, etc.) inside a
+  Columns zone are now sized against the column's width rather than the
+  nearest outer `@container` ancestor (typically `<body>`). Non-breaking:
+  components rendered outside Columns are unaffected; components that
+  don't use container queries are unaffected.
+
 ## [0.1.0-beta.5] - 2026-06-14
 
 ### Added

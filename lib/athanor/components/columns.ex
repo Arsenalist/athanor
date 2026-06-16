@@ -263,9 +263,10 @@ defmodule Athanor.Components.Columns do
   end
 
   defp zone_wrapper_class(true, width_class),
-    do: "md:#{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
+    do:
+      "@container md:#{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
 
-  defp zone_wrapper_class(false, width_class), do: "md:#{width_class}"
+  defp zone_wrapper_class(false, width_class), do: "@container md:#{width_class}"
 
   defp width_distribution_options(n) do
     @width_distributions
