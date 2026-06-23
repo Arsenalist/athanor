@@ -46,37 +46,42 @@ defmodule Athanor.Components.Columns do
     4 => ["one", "two", "three", "four"]
   }
 
+  # Classes are stored pre-prefixed with `md:` as full literal strings so
+  # Tailwind v4's scanner picks them up from this source file. Building them
+  # via `md:#{width}` interpolation at render time would defeat the scanner
+  # and produce missing CSS for any distribution that isn't also referenced
+  # literally elsewhere in the host app.
   @width_distributions %{
     2 => [
-      %{label: "Equal (50/50)", value: "equal", classes: ["w-1/2", "w-1/2"]},
-      %{label: "Left wider (66/33)", value: "66-33", classes: ["w-2/3", "w-1/3"]},
-      %{label: "Right wider (33/66)", value: "33-66", classes: ["w-1/3", "w-2/3"]},
-      %{label: "Sidebar left (25/75)", value: "25-75", classes: ["w-1/4", "w-3/4"]},
-      %{label: "Sidebar right (75/25)", value: "75-25", classes: ["w-3/4", "w-1/4"]}
+      %{label: "Equal (50/50)", value: "equal", classes: ["md:w-1/2", "md:w-1/2"]},
+      %{label: "Left wider (66/33)", value: "66-33", classes: ["md:w-2/3", "md:w-1/3"]},
+      %{label: "Right wider (33/66)", value: "33-66", classes: ["md:w-1/3", "md:w-2/3"]},
+      %{label: "Sidebar left (25/75)", value: "25-75", classes: ["md:w-1/4", "md:w-3/4"]},
+      %{label: "Sidebar right (75/25)", value: "75-25", classes: ["md:w-3/4", "md:w-1/4"]}
     ],
     3 => [
-      %{label: "Equal (33/33/33)", value: "equal", classes: ["w-1/3", "w-1/3", "w-1/3"]},
+      %{label: "Equal (33/33/33)", value: "equal", classes: ["md:w-1/3", "md:w-1/3", "md:w-1/3"]},
       %{
         label: "Center emphasis (25/50/25)",
         value: "25-50-25",
-        classes: ["w-1/4", "w-1/2", "w-1/4"]
+        classes: ["md:w-1/4", "md:w-1/2", "md:w-1/4"]
       },
       %{
         label: "Left emphasis (50/25/25)",
         value: "50-25-25",
-        classes: ["w-1/2", "w-1/4", "w-1/4"]
+        classes: ["md:w-1/2", "md:w-1/4", "md:w-1/4"]
       },
       %{
         label: "Right emphasis (25/25/50)",
         value: "25-25-50",
-        classes: ["w-1/4", "w-1/4", "w-1/2"]
+        classes: ["md:w-1/4", "md:w-1/4", "md:w-1/2"]
       }
     ],
     4 => [
       %{
         label: "Equal (25/25/25/25)",
         value: "equal",
-        classes: ["w-1/4", "w-1/4", "w-1/4", "w-1/4"]
+        classes: ["md:w-1/4", "md:w-1/4", "md:w-1/4", "md:w-1/4"]
       }
     ]
   }
@@ -212,7 +217,7 @@ defmodule Athanor.Components.Columns do
           phx-hook={if @edit_mode?, do: "AthanorDropZone", else: nil}
           data-athanor-target-parent-id={if @edit_mode?, do: @node_id, else: nil}
           data-athanor-target-zone={if @edit_mode?, do: zone_name, else: nil}
-          class={zone_wrapper_class(@edit_mode?, Enum.at(@width_classes, idx, "flex-1"))}
+          class={zone_wrapper_class(@edit_mode?, Enum.at(@width_classes, idx, "md:flex-1"))}
         >
           <div
             :for={child <- Map.get(@zones, zone_name, [])}
@@ -264,9 +269,9 @@ defmodule Athanor.Components.Columns do
 
   defp zone_wrapper_class(true, width_class),
     do:
-      "@container md:#{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
+      "@container #{width_class} min-h-[200px] border-2 border-dashed border-gray-300 rounded-lg p-4"
 
-  defp zone_wrapper_class(false, width_class), do: "@container md:#{width_class}"
+  defp zone_wrapper_class(false, width_class), do: "@container #{width_class}"
 
   defp width_distribution_options(n) do
     @width_distributions

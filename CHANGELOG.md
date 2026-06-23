@@ -11,6 +11,22 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.7] - 2026-06-23
+
+### Fixed
+
+- `Columns` width-distribution classes now ship as full literal `md:w-1/2`,
+  `md:w-2/3`, `md:w-1/3`, `md:w-3/4`, `md:w-1/4` strings inside
+  `@width_distributions`, with `zone_wrapper_class/2` no longer prefixing
+  `md:` via interpolation. The previous `md:#{width}` interpolation defeated
+  the Tailwind v4 source scanner, so consumers only got CSS for any
+  distribution whose responsive class happened to appear literally elsewhere
+  in their own source (typically just `md:w-1/2`). Switching a 2-column
+  Columns to 66/33, 33/66, 25/75, or 75/25 — or any 3- or 4-column non-equal
+  layout — silently shipped without width CSS and collapsed at render time.
+  Self-contained fix: consumer's existing `@source ".../deps/athanor/lib/**/*.*ex"`
+  glob now picks up every responsive width class as a literal string.
+
 ## [0.1.0-beta.6] - 2026-06-16
 
 ### Changed

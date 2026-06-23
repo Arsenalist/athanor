@@ -1,7 +1,7 @@
 defmodule Athanor.MixProject do
   use Mix.Project
 
-  @version "0.1.0-beta.6"
+  @version "0.1.0-beta.7"
   @source_url "https://github.com/Arsenalist/athanor"
 
   @moduledoc false
