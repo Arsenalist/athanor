@@ -64,8 +64,12 @@ defmodule Athanor.Editor.Live do
 
   defmacro __using__(opts \\ []) do
     quote location: :keep, bind_quoted: [opts: opts] do
+      # Phoenix.LiveView's own __using__ already runs `use Phoenix.Component`
+      # internally — an explicit second call here duplicated its
+      # @before_compile hook, producing two identical (redundant)
+      # __phoenix_component_verify__/1 clauses on any consumer that calls
+      # tracked function components.
       use Phoenix.LiveView
-      use Phoenix.Component
 
       @behaviour Athanor.Editor
 
