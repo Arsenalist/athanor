@@ -120,6 +120,22 @@ defmodule Athanor.Fields do
     """
   end
 
+  # Shared label for the standard (non-color, non-checkbox) field types.
+  # Renders the field label plus a required marker asterisk when the field
+  # declares `required: true` in its opts (static or via `resolve_fields/2`).
+  defp field_label(assigns) do
+    ~H"""
+    <label :if={@opts[:label]} class="text-xs font-semibold">
+      {@opts[:label]}<span
+        :if={@opts[:required]}
+        data-testid="athanor-field-required"
+        class="text-error ml-0.5"
+        aria-hidden="true"
+      >*</span>
+    </label>
+    """
+  end
+
   attr(:key, :string, required: true)
   attr(:type, :atom, required: true)
   attr(:opts, :any, required: true)
@@ -130,7 +146,7 @@ defmodule Athanor.Fields do
   defp field(%{type: :text} = assigns) do
     ~H"""
     <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <input
         type="text"
         name={@key}
@@ -146,7 +162,7 @@ defmodule Athanor.Fields do
   defp field(%{type: :textarea} = assigns) do
     ~H"""
     <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <textarea
         name={@key}
         placeholder={@opts[:placeholder] || ""}
@@ -160,7 +176,7 @@ defmodule Athanor.Fields do
   defp field(%{type: :number} = assigns) do
     ~H"""
     <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <input
         type="number"
         name={@key}
@@ -183,7 +199,7 @@ defmodule Athanor.Fields do
 
     ~H"""
     <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <select name={@key} class="select select-bordered select-sm w-full">
         <option :if={@opts[:prompt]} value="" selected={@props[@key] in [nil, ""]}>
           {@opts[:prompt]}
@@ -206,18 +222,22 @@ defmodule Athanor.Fields do
     # lazily here. Inputs share `name={@key}` so the browser enforces single
     # selection and the fields form posts the checked value like any built-in.
     options = resolve_options(assigns.opts[:options], assigns)
-    assigns = assign(assigns, :options, options)
+    # Fall back to the field's `default:` when the stored value is blank —
+    # existing configs saved before the field existed carry no value, and a
+    # single-choice radio has no "prompt" empty option to land on.
+    current = field_value_or_default(assigns.props[assigns.key], assigns.opts[:default])
+    assigns = assigns |> assign(:options, options) |> assign(:current, current)
 
     ~H"""
     <div>
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <div class="flex flex-col gap-1">
         <label :for={{label, value} <- @options} class="flex items-center gap-2 text-sm">
           <input
             type="radio"
             name={@key}
             value={value}
-            checked={to_string(@props[@key]) == to_string(value)}
+            checked={to_string(@current) == to_string(value)}
             class="radio radio-sm"
           />
           {label}
@@ -325,7 +345,7 @@ defmodule Athanor.Fields do
 
     ~H"""
     <div data-testid="athanor-asset-field">
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <div class="flex flex-wrap gap-2 mb-2">
         <div
           :for={asset <- @assets}
@@ -382,13 +402,17 @@ defmodule Athanor.Fields do
 
     ~H"""
     <div data-testid="athanor-asset-field">
-      <label :if={@opts[:label]} class="text-xs font-semibold">{@opts[:label]}</label>
+      <.field_label opts={@opts} />
       <div
         :if={@url}
         data-testid="athanor-asset-preview"
         class="mb-2 flex items-center gap-2"
       >
-        <img :if={@image?} src={@url} class="w-auto h-24 rounded-lg border border-base-300 object-contain" />
+        <img
+          :if={@image?}
+          src={@url}
+          class="w-auto h-24 rounded-lg border border-base-300 object-contain"
+        />
         <span :if={!@image?} class="flex items-center gap-2 text-sm">
           <i class="fa-regular fa-file" aria-hidden="true"></i>{@name}
         </span>
@@ -461,6 +485,12 @@ defmodule Athanor.Fields do
 
   defp resolve_options(opts, _assigns) when is_list(opts), do: opts
   defp resolve_options(_, _), do: []
+
+  # Returns the stored value, or the field's `default:` when the stored value
+  # is blank (nil / ""). Used to seed the checked state for choice inputs so
+  # pre-existing configs without a stored value still reflect the default.
+  defp field_value_or_default(value, default) when value in [nil, ""], do: default
+  defp field_value_or_default(value, _default), do: value
 
   # ─── :asset helpers ─────────────────────────────────────────────────────
   #

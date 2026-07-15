@@ -83,6 +83,19 @@ defmodule Athanor.FieldsTest do
     end
   end
 
+  defmodule RadioDefault do
+    use Athanor.Component
+    def metadata, do: %{type: "radio_default", label: "RD"}
+
+    def fields,
+      do: [
+        {"style", :radio,
+         label: "Style",
+         default: "default",
+         options: [{"Default", "default"}, {"Overlay", "overlay"}]}
+      ]
+  end
+
   defmodule RadioConditional do
     use Athanor.Component
     def metadata, do: %{type: "radio_cond", label: "RC"}
@@ -163,6 +176,18 @@ defmodule Athanor.FieldsTest do
 
     def fields,
       do: [{"hero", :asset, label: "Hero", if: fn props -> props["enabled"] == true end}]
+  end
+
+  defmodule RequiredFields do
+    use Athanor.Component
+    def metadata, do: %{type: "required_fields", label: "RF"}
+
+    def fields,
+      do: [
+        {"title", :text, label: "Title", required: true},
+        {"subtitle", :text, label: "Subtitle"},
+        {"image", :asset, label: "Image", required: true}
+      ]
   end
 
   # ---------------------------------------------------------------------------
@@ -340,6 +365,24 @@ defmodule Athanor.FieldsTest do
     test "missing/non-matching value checks no option" do
       html = render_fields(RadioOnly, %{})
       refute html =~ "checked"
+    end
+
+    test "blank/missing value falls back to the :default option checked" do
+      # Existing configs saved before the field existed have no stored value.
+      html = render_fields(RadioDefault, %{})
+      assert html =~ ~r/<input type="radio"[^>]*value="default"[^>]*checked/
+      refute html =~ ~r/<input type="radio"[^>]*value="overlay"[^>]*checked/
+    end
+
+    test "empty-string value also falls back to the :default option" do
+      html = render_fields(RadioDefault, %{"style" => ""})
+      assert html =~ ~r/<input type="radio"[^>]*value="default"[^>]*checked/
+    end
+
+    test "an explicit non-default value still wins over :default" do
+      html = render_fields(RadioDefault, %{"style" => "overlay"})
+      assert html =~ ~r/<input type="radio"[^>]*value="overlay"[^>]*checked/
+      refute html =~ ~r/<input type="radio"[^>]*value="default"[^>]*checked/
     end
 
     test "options as an arity-1 function of ctx resolve at render" do
@@ -648,5 +691,32 @@ defmodule Athanor.FieldsTest do
       assert b =~ "https://x/b.png"
       refute b =~ "https://x/a.png"
     end
+  end
+
+  describe "required: field opt" do
+    test "marks a required built-in field label with an asterisk" do
+      html = render_fields(RequiredFields, %{})
+      # Title is required → its label carries the required marker.
+      assert html =~ ~s(data-testid="athanor-field-required")
+    end
+
+    test "does not mark a non-required field" do
+      # Subtitle has no required: opt — count markers equals the two
+      # required fields (title + image), not three.
+      html = render_fields(RequiredFields, %{})
+      markers = html |> String.split(~s(data-testid="athanor-field-required")) |> length()
+      assert markers - 1 == 2
+    end
+
+    test "marks a required :asset field label" do
+      html = render_fields(RequiredFields, %{})
+      # The asset field renders its own label path; ensure the marker reaches it.
+      assert html =~ "Image"
+      assert markers_count(html) == 2
+    end
+  end
+
+  defp markers_count(html) do
+    (html |> String.split(~s(data-testid="athanor-field-required")) |> length()) - 1
   end
 end

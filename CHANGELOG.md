@@ -11,6 +11,18 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.9] - 2026-07-15
+
+### Added
+
+- `fields/0` field opt `required: true` — renders a required-marker
+  asterisk on the field label (text / textarea / number / select / radio
+  / asset). Static or driven per-props via `resolve_fields/2`.
+- `:radio` field opt `default:` — seeds the checked option when the stored
+  value is blank (`nil` / `""`), so configs saved before a radio field
+  existed still reflect its default instead of rendering with no option
+  selected.
+
 ## [0.1.0-beta.8] - 2026-07-15
 
 ### Fixed
@@ -157,7 +169,8 @@ during the beta window.
   Athanor.Component module as the `:page_settings_component` opt and
   the library auto-renders its `fields/0` at the top of the sidebar.
 
-[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.3...HEAD
+[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.9...HEAD
+[0.1.0-beta.9]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.9
 [0.1.0-beta.3]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.2
 [0.1.0-beta.1]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.1
