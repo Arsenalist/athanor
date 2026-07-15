@@ -11,6 +11,18 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.8] - 2026-07-15
+
+### Fixed
+
+- `Athanor.Editor.Live.__using__` no longer calls `use Phoenix.Component`
+  explicitly — `Phoenix.LiveView`'s own `__using__` already runs it
+  internally, so the extra call re-registered `Phoenix.Component`'s
+  `@before_compile` hook, producing two identical
+  `__phoenix_component_verify__/1` clauses (flagged as redundant by
+  Elixir 1.20's type checker) on any consumer that calls tracked function
+  components — e.g. Amplify's `PageBuilderLive`.
+
 ## [0.1.0-beta.7] - 2026-06-23
 
 ### Fixed
