@@ -5,11 +5,13 @@ defmodule Athanor.Editor.ZonePickerModalTest do
   (triggered by a Columns child's "Add Component" button).
 
   Renders a palette of available components scoped by
-  `Athanor.Registry.components_metadata/0` and on submit emits the
+  `Athanor.Registry.components_metadata/1` and on submit emits the
   consumer-handled `"add_component_to_zone"` event.
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   import Phoenix.LiveViewTest
@@ -22,8 +24,7 @@ defmodule Athanor.Editor.ZonePickerModalTest do
   end
 
   setup do
-    Application.put_env(:athanor, :components, [FakeText])
-    on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+    put_test_registry([FakeText])
     :ok
   end
 
@@ -31,7 +32,7 @@ defmodule Athanor.Editor.ZonePickerModalTest do
     render_component(
       fn assigns ->
         ~H"""
-        <Editor.zone_picker_modal column_picker={@column_picker} />
+        <Editor.zone_picker_modal column_picker={@column_picker} registry={:test} />
         """
       end,
       %{column_picker: column_picker}

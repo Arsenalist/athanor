@@ -11,6 +11,53 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.10] - 2026-08-04
+
+### Changed (BREAKING)
+
+- **Registries are named.** `config :athanor, :components` and
+  `config :athanor, :fallback_resolver` are removed — no shim. Configure
+  registries instead:
+
+  ```elixir
+  config :athanor, :registries,
+    page_builder: [
+      components: [MyApp.Components.Hero],
+      fallback_resolver: {MyApp.LegacyResolver, :resolve_type}
+    ],
+    channel_overlays: [components: [MyApp.Overlays.Text]]
+  ```
+
+  A host app almost always grows a second palette, and one global registry
+  makes them leak into each other's pickers and resolve each other's types.
+  Setting either removed key now raises with migration instructions rather
+  than silently rendering an empty palette.
+
+  Migration:
+
+  - `Athanor.Registry.lookup/1`, `all/0`, `components_metadata/0` and
+    `metadata_for/1` take the registry name as their first argument.
+  - `Athanor.Ctx` gains `registry`; `Athanor.Renderer` reads it, so every
+    ctx used to render a tree must name one.
+  - `use Athanor.Editor.Live` requires a `registry:` option (compile-time
+    error without it). It becomes the ctx's registry and scopes the
+    palette, the config panel and the zone picker.
+  - `Athanor.Editor.zone_picker_modal/1` takes a required `registry` attr.
+  - `Athanor.Editor.Live.warn_if_registered/2` takes the registry to check
+    against; a page-settings module registered in some *other* registry is
+    no longer warned about.
+
+### Added
+
+- `Athanor.Registry.registries/0` — names of every configured registry.
+- `AthanorDropZone` is reusable outside the editor canvas:
+  `data-athanor-drop-event` sets the pushed LiveView event name
+  (default `athanor:dnd_drop`), `data-athanor-drop-axis="x"` computes the
+  insertion index and draws the indicator horizontally for a row of slots,
+  and `data-athanor-drop-index="false"` skips index computation entirely
+  for single-slot zones. The drag payload is passed through verbatim, so a
+  host can carry its own fields without patching the hook.
+
 ## [0.1.0-beta.9] - 2026-07-15
 
 ### Added

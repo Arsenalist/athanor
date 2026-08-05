@@ -1,18 +1,14 @@
 defmodule Athanor.RendererTest do
   use ExUnit.Case, async: false
 
+  import Athanor.Test.RegistryHelpers
+
   import Phoenix.LiveViewTest
 
   alias Athanor.Ctx
   alias Athanor.Test.FakeComponents.{Minimal, WithRender}
 
-  setup do
-    original = Application.get_env(:athanor, :components)
-    on_exit(fn -> if original, do: Application.put_env(:athanor, :components, original) end)
-    :ok
-  end
-
-  defp set_components(modules), do: Application.put_env(:athanor, :components, modules)
+  defp set_components(modules), do: put_test_registry(modules)
 
   defp node(type, id, props \\ %{}),
     do: %{"id" => id, "type" => type, "props" => props}
@@ -21,7 +17,7 @@ defmodule Athanor.RendererTest do
     test "calls module.render(:live, node, ctx) for a component implementing render/3" do
       set_components([WithRender])
       tree = %{"metadata" => %{}, "content" => [node("fake_with_render", "n1")]}
-      ctx = Ctx.new()
+      ctx = Ctx.new(registry: :test)
 
       html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: ctx)
 
@@ -42,7 +38,7 @@ defmodule Athanor.RendererTest do
 
       set_components([CaptureCtx])
       tree = %{"metadata" => %{}, "content" => [node("capture_ctx", "n2")]}
-      ctx = Ctx.new(account_id: "acct_test_123")
+      ctx = Ctx.new(registry: :test, account_id: "acct_test_123")
 
       html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: ctx)
 
@@ -63,15 +59,10 @@ defmodule Athanor.RendererTest do
         end
       end
 
-      original_fallback = Application.get_env(:athanor, :fallback_resolver)
       original_adapter = Application.get_env(:athanor, :legacy_adapter)
 
       try do
-        Application.put_env(
-          :athanor,
-          :fallback_resolver,
-          {FakeRegistryHitsLegacyTruthy, :resolve}
-        )
+        put_test_registry([], fallback_resolver: {FakeRegistryHitsLegacyTruthy, :resolve})
 
         Application.put_env(:athanor, :legacy_adapter, {FakeLegacyAdapter, :render})
 
@@ -85,14 +76,11 @@ defmodule Athanor.RendererTest do
         }
 
         # Pre-fix this would raise ArgumentError on :erlang.not(6).
-        html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new())
+        html =
+          render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new(registry: :test))
 
         assert html =~ ~s(data-truthy-adapter="leg1")
       after
-        if original_fallback,
-          do: Application.put_env(:athanor, :fallback_resolver, original_fallback),
-          else: Application.delete_env(:athanor, :fallback_resolver)
-
         if original_adapter,
           do: Application.put_env(:athanor, :legacy_adapter, original_adapter),
           else: Application.delete_env(:athanor, :legacy_adapter)
@@ -104,7 +92,7 @@ defmodule Athanor.RendererTest do
     test "renders a developer placeholder, does not crash" do
       set_components([])
       tree = %{"metadata" => %{}, "content" => [node("does_not_exist", "n3")]}
-      ctx = Ctx.new()
+      ctx = Ctx.new(registry: :test)
 
       html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: ctx)
 
@@ -126,7 +114,7 @@ defmodule Athanor.RendererTest do
         ]
       }
 
-      html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new())
+      html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new(registry: :test))
 
       assert :binary.match(html, "n=\"a\"") < :binary.match(html, "n=\"b\"") or
                (html =~ ~s(data-fake-render="a") and
@@ -137,7 +125,7 @@ defmodule Athanor.RendererTest do
     test "empty content renders empty wrapper" do
       set_components([])
       tree = %{"metadata" => %{}, "content" => []}
-      html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new())
+      html = render_component(&Athanor.Renderer.tree/1, tree: tree, ctx: Ctx.new(registry: :test))
 
       assert is_binary(html)
     end

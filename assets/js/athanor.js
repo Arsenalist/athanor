@@ -12,11 +12,29 @@
 //     `data-athanor-target-zone` (zone name, default "content"), and
 //     optionally `data-athanor-target-index`. When the zone is a *list*
 //     of child slots, the hook computes the insertion index from the
-//     cursor's vertical midpoint against each direct child.
+//     cursor's position against each direct child.
 //
 // On drop the hook pushes the LiveView event `athanor:dnd_drop` with:
 //   { source, type?, node_id?,
 //     target_parent_id, target_zone, target_index }
+//
+// Three things about the drop zone are configurable, because the editor
+// canvas is not the only surface that wants HTML5 drag-and-drop:
+//
+//   • `data-athanor-drop-event` — the LiveView event name to push
+//     (default "athanor:dnd_drop"). A host with its own editor handles
+//     its own event rather than colliding with the library's.
+//
+//   • the drag payload is passed through verbatim. Whatever a drag
+//     source put in `dataTransfer` beyond `source`/`type`/`node_id`
+//     arrives on the pushed event untouched, so a host can carry its
+//     own fields (a zone name, a scene id) without patching the hook.
+//
+//   • `data-athanor-drop-axis` — "y" (default) or "x". A row of
+//     horizontal slots needs the insertion index computed against each
+//     child's horizontal midpoint, not its vertical one. Setting
+//     `data-athanor-drop-index="false"` skips index computation
+//     altogether for zones that are a single slot rather than a list.
 //
 // Wire into your LiveSocket:
 //
@@ -117,7 +135,9 @@ const AthanorDropZone = {
       e.preventDefault()
       e.dataTransfer.dropEffect = "move"
       this.el.classList.add(DROP_INDICATOR_CLASS)
-      updateIndicator(this.el, this.indicator, e.clientY)
+      if (indexingEnabled(this.el)) {
+        updateIndicator(this.el, this.indicator, e, dropAxis(this.el))
+      }
     })
 
     this.el.addEventListener("dragleave", (e) => {
@@ -146,13 +166,15 @@ const AthanorDropZone = {
       const targetZone =
         this.el.dataset.athanorTargetZone || "content"
 
-      // If the data attr sets an explicit index, use it. Otherwise
-      // compute by cursor Y vs each direct child's midpoint.
+      // If the data attr sets an explicit index, use it. If indexing is
+      // switched off (a single-slot zone), don't send one at all. Otherwise
+      // compute it from the cursor against each direct child's midpoint on
+      // the configured axis.
       let targetIndex
       if (this.el.dataset.athanorTargetIndex !== undefined) {
         targetIndex = parseInt(this.el.dataset.athanorTargetIndex, 10) || 0
-      } else {
-        targetIndex = computeDropIndex(this.el, e.clientY)
+      } else if (indexingEnabled(this.el)) {
+        targetIndex = computeDropIndex(this.el, e, dropAxis(this.el))
       }
 
       // Don't drop a node onto itself (the "I dragged but landed in the
@@ -165,14 +187,18 @@ const AthanorDropZone = {
         return
       }
 
-      this.pushEvent("athanor:dnd_drop", {
+      // Payload passthrough: everything the drag source put in the
+      // dataTransfer rides along, so a host can carry its own fields without
+      // the hook needing to know about them.
+      const payload = {
+        ...source,
         source: source.source,
-        type: source.type,
-        node_id: source.node_id,
         target_parent_id: targetParentId,
         target_zone: targetZone,
-        target_index: targetIndex,
-      })
+      }
+      if (targetIndex !== undefined) payload.target_index = targetIndex
+
+      this.pushEvent(dropEventName(this.el), payload)
     })
   },
 
@@ -183,54 +209,85 @@ const AthanorDropZone = {
   },
 }
 
+// The LiveView event this zone pushes on drop. Defaults to the library's
+// own event so the editor keeps working with no attribute at all.
+function dropEventName(zoneEl) {
+  return zoneEl.dataset.athanorDropEvent || "athanor:dnd_drop"
+}
+
+// "x" for a row of slots, "y" (default) for a document-flow column.
+function dropAxis(zoneEl) {
+  return zoneEl.dataset.athanorDropAxis === "x" ? "x" : "y"
+}
+
+// A zone that is one slot rather than a list opts out of index maths with
+// `data-athanor-drop-index="false"`.
+function indexingEnabled(zoneEl) {
+  return zoneEl.dataset.athanorDropIndex !== "false"
+}
+
+function dropItems(zoneEl) {
+  return Array.from(zoneEl.querySelectorAll(":scope > [data-athanor-drop-item]"))
+}
+
 // Position the insertion-line indicator inside the zone at the cursor's
 // computed insertion point. For an empty zone the indicator is hidden —
 // the zone-level highlight (outline + tinted background) carries the
 // feedback alone.
-function updateIndicator(zoneEl, indicator, clientY) {
-  const items = Array.from(
-    zoneEl.querySelectorAll(":scope > [data-athanor-drop-item]")
-  )
+function updateIndicator(zoneEl, indicator, event, axis) {
+  const items = dropItems(zoneEl)
   if (items.length === 0) {
     indicator.style.display = "none"
     return
   }
 
   const zoneRect = zoneEl.getBoundingClientRect()
-  let idx = items.length
-  for (let i = 0; i < items.length; i++) {
-    const rect = items[i].getBoundingClientRect()
-    if (clientY < rect.top + rect.height / 2) {
-      idx = i
-      break
-    }
-  }
+  const idx = insertionIndex(items, event, axis)
 
-  let y
-  if (idx < items.length) {
-    y = items[idx].getBoundingClientRect().top - zoneRect.top
+  if (axis === "x") {
+    const x =
+      idx < items.length
+        ? items[idx].getBoundingClientRect().left - zoneRect.left
+        : items[items.length - 1].getBoundingClientRect().right - zoneRect.left
+
+    // A vertical rule between horizontal slots, rather than the
+    // between-rows line the default axis draws.
+    indicator.style.left = `${x + zoneEl.scrollLeft}px`
+    indicator.style.right = "auto"
+    indicator.style.top = "0"
+    indicator.style.bottom = "0"
+    indicator.style.height = "auto"
+    indicator.style.width = "3px"
+    indicator.style.transform = "translateX(-1.5px)"
   } else {
-    y = items[items.length - 1].getBoundingClientRect().bottom - zoneRect.top
+    const y =
+      idx < items.length
+        ? items[idx].getBoundingClientRect().top - zoneRect.top
+        : items[items.length - 1].getBoundingClientRect().bottom - zoneRect.top
+
+    indicator.style.top = `${y + zoneEl.scrollTop}px`
   }
 
-  indicator.style.top = `${y + zoneEl.scrollTop}px`
   indicator.style.display = "block"
 }
 
-// Pick an insertion index inside a drop zone based on cursor Y.
-// Direct children that themselves carry `data-athanor-drop-item` are
-// treated as the slot list. The cursor's vertical position decides
-// whether the new item lands before or after each child.
-function computeDropIndex(zoneEl, clientY) {
-  const items = Array.from(
-    zoneEl.querySelectorAll(":scope > [data-athanor-drop-item]")
-  )
+// Pick an insertion index inside a drop zone from the cursor position.
+// Direct children carrying `data-athanor-drop-item` are the slot list; the
+// cursor decides whether the new item lands before or after each one.
+function computeDropIndex(zoneEl, event, axis) {
+  const items = dropItems(zoneEl)
   if (items.length === 0) return 0
+  return insertionIndex(items, event, axis)
+}
+
+function insertionIndex(items, event, axis) {
+  const position = axis === "x" ? event.clientX : event.clientY
 
   for (let i = 0; i < items.length; i++) {
     const rect = items[i].getBoundingClientRect()
-    const midpoint = rect.top + rect.height / 2
-    if (clientY < midpoint) return i
+    const midpoint =
+      axis === "x" ? rect.left + rect.width / 2 : rect.top + rect.height / 2
+    if (position < midpoint) return i
   }
   return items.length
 }

@@ -386,7 +386,7 @@ defmodule Athanor.Editor do
 
   @doc """
   Left-sidebar content. Renders the components palette from
-  `Athanor.Registry.components_metadata/0` and, when
+  `Athanor.Registry.components_metadata/1` (scoped to `ctx.registry`) and, when
   `page_settings_component` is provided, renders that component's form
   via `Athanor.AutoEditorForm` ABOVE the palette.
   """
@@ -438,7 +438,7 @@ defmodule Athanor.Editor do
         <div class="px-3 py-3">
           <div class="grid grid-cols-2 gap-2">
             <button
-              :for={meta <- Registry.components_metadata()}
+              :for={meta <- Registry.components_metadata(@ctx.registry)}
               type="button"
               phx-click="add_component"
               phx-value-type={meta.type}
@@ -508,7 +508,7 @@ defmodule Athanor.Editor do
       <header class="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 bg-base-100 border-b border-base-300/60">
         <i class="fas fa-sliders text-xs text-base-content/40"></i>
         <h2 class="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-          {component_label(@node)}
+          {component_label(@ctx.registry, @node)}
         </h2>
         <div class="ml-auto flex items-center gap-1">
           <button
@@ -539,10 +539,10 @@ defmodule Athanor.Editor do
     """
   end
 
-  defp component_label(node) do
+  defp component_label(registry, node) do
     type = node["type"]
 
-    case Registry.lookup(type) do
+    case Registry.lookup(registry, type) do
       nil -> String.capitalize(type)
       mod -> Map.get(mod.metadata(), :label, String.capitalize(type))
     end
@@ -553,7 +553,7 @@ defmodule Athanor.Editor do
 
   defp config_dispatch(assigns) do
     type = assigns.node["type"]
-    mod = Registry.lookup(type)
+    mod = Registry.lookup(assigns.ctx.registry, type)
 
     decision =
       cond do
@@ -625,6 +625,11 @@ defmodule Athanor.Editor do
     doc: "nil OR {parent_id :: String.t(), zone_name :: String.t()}"
   )
 
+  attr(:registry, :atom,
+    required: true,
+    doc: "Registry the picker offers components from — the editor's `registry:` option."
+  )
+
   def zone_picker_modal(assigns) do
     ~H"""
     <div :if={@column_picker} class="modal modal-open" data-testid="zone-picker-modal">
@@ -635,7 +640,7 @@ defmodule Athanor.Editor do
           <input type="hidden" name="parent_id" value={parent_id} />
           <input type="hidden" name="zone_name" value={zone_name} />
           <select name="type" class="select select-bordered">
-            <option :for={meta <- Registry.components_metadata()} value={meta.type}>
+            <option :for={meta <- Registry.components_metadata(@registry)} value={meta.type}>
               {meta.label}
             </option>
           </select>

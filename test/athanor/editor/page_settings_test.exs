@@ -11,6 +11,8 @@ defmodule Athanor.Editor.PageSettingsTest do
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   import ExUnit.CaptureLog
@@ -57,6 +59,12 @@ defmodule Athanor.Editor.PageSettingsTest do
   end
 
   # ─── rendering ─────────────────────────────────────────────────────────
+
+  # Every editor surface reads a registry; suites that do not care which
+  # components exist still need the name to resolve.
+  setup do
+    put_test_registry([])
+  end
 
   describe "rendering page settings in left sidebar" do
     test "renders page settings section when component is set" do
@@ -160,25 +168,25 @@ defmodule Athanor.Editor.PageSettingsTest do
 
   describe "page_settings_component also in registry" do
     test "emits a warning when the module is found in Athanor.Registry" do
-      Application.put_env(:athanor, :components, [SimplePS])
-      on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+      put_test_registry([SimplePS])
 
       log =
         capture_log(fn ->
-          EditorLive.warn_if_registered(SimplePS)
+          EditorLive.warn_if_registered(SimplePS, :test)
         end)
 
       assert log =~ "page_settings_component"
-      assert log =~ "Athanor.Registry"
+      # Scoped: the warning names the registry the collision is in.
+      assert log =~ ":test Athanor registry"
       assert log =~ "SimplePS"
     end
 
     test "no warning when module is NOT in registry" do
-      Application.put_env(:athanor, :components, [])
+      put_test_registry([])
 
       log =
         capture_log(fn ->
-          EditorLive.warn_if_registered(SimplePS)
+          EditorLive.warn_if_registered(SimplePS, :test)
         end)
 
       refute log =~ "page_settings_component"
@@ -187,7 +195,7 @@ defmodule Athanor.Editor.PageSettingsTest do
     test "no warning when component opt is nil" do
       log =
         capture_log(fn ->
-          EditorLive.warn_if_registered(nil)
+          EditorLive.warn_if_registered(nil, :test)
         end)
 
       refute log =~ "page_settings_component"
@@ -198,7 +206,7 @@ defmodule Athanor.Editor.PageSettingsTest do
 
   defp render_panel(page_settings_component, metadata) do
     assigns = %{
-      ctx: Athanor.Ctx.new(edit_mode?: true),
+      ctx: Athanor.Ctx.new(registry: :test, edit_mode?: true),
       page_settings_component: page_settings_component,
       metadata: metadata
     }

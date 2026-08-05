@@ -1,6 +1,8 @@
 defmodule Athanor.RendererFieldSchemaTest do
   use ExUnit.Case, async: false
 
+  import Athanor.Test.RegistryHelpers
+
   import Phoenix.LiveViewTest
 
   alias Athanor.Ctx
@@ -14,21 +16,7 @@ defmodule Athanor.RendererFieldSchemaTest do
     WithRender
   }
 
-  setup do
-    original = Application.get_env(:athanor, :components)
-
-    on_exit(fn ->
-      if original do
-        Application.put_env(:athanor, :components, original)
-      else
-        Application.delete_env(:athanor, :components)
-      end
-    end)
-
-    :ok
-  end
-
-  defp set_components(modules), do: Application.put_env(:athanor, :components, modules)
+  defp set_components(modules), do: put_test_registry(modules)
   defp node_for(type, id), do: %{"id" => id, "type" => type, "props" => %{}}
 
   defp render_dispatch(modules, type, opts) do
@@ -37,7 +25,7 @@ defmodule Athanor.RendererFieldSchemaTest do
 
     render_component(&Athanor.Renderer.tree/1,
       tree: tree,
-      ctx: Ctx.new(),
+      ctx: Ctx.new(registry: :test),
       edit_mode: Keyword.get(opts, :edit_mode, false),
       show_config: Keyword.get(opts, :show_config, false)
     )

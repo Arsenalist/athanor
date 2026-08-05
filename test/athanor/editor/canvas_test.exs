@@ -8,6 +8,8 @@ defmodule Athanor.Editor.CanvasTest do
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   import Phoenix.LiveViewTest
@@ -30,15 +32,14 @@ defmodule Athanor.Editor.CanvasTest do
   end
 
   setup do
-    Application.put_env(:athanor, :components, [FakeComponent])
-    on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+    put_test_registry([FakeComponent])
     :ok
   end
 
   defp render_canvas(content, opts \\ []) do
     assigns = %{
       content: content,
-      ctx: opts[:ctx] || Ctx.new(edit_mode?: true),
+      ctx: opts[:ctx] || Ctx.new(registry: :test, edit_mode?: true),
       selected_component_id: opts[:selected_component_id]
     }
 
@@ -78,7 +79,7 @@ defmodule Athanor.Editor.CanvasTest do
     test "renders a Configure button per top-level node when select_component_callback is set" do
       content = %{"content" => [%{"id" => "n1", "type" => "fake", "props" => %{"title" => "T"}}]}
       cb = fn _id -> Phoenix.LiveView.JS.push("select_component") end
-      ctx = Ctx.new(edit_mode?: true, select_component_callback: cb)
+      ctx = Ctx.new(registry: :test, edit_mode?: true, select_component_callback: cb)
 
       html = render_canvas(content, ctx: ctx)
       assert html =~ ~s(data-testid="athanor-canvas-configure-n1")
@@ -115,7 +116,7 @@ defmodule Athanor.Editor.CanvasTest do
 
   describe "viewport class" do
     test "applies max-width class for tablet viewport" do
-      ctx = Ctx.new(edit_mode?: true, extra: %{viewport: :tablet})
+      ctx = Ctx.new(registry: :test, edit_mode?: true, extra: %{viewport: :tablet})
       content = %{"content" => []}
 
       html =

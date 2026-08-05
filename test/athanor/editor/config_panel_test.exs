@@ -9,6 +9,8 @@ defmodule Athanor.Editor.ConfigPanelTest do
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   import Phoenix.LiveViewTest
@@ -28,8 +30,7 @@ defmodule Athanor.Editor.ConfigPanelTest do
   end
 
   setup do
-    Application.put_env(:athanor, :components, [WithFields, NoConfig])
-    on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+    put_test_registry([WithFields, NoConfig])
     :ok
   end
 
@@ -37,7 +38,7 @@ defmodule Athanor.Editor.ConfigPanelTest do
     assigns = %{
       selected_component_id: selected_id,
       content: content,
-      ctx: Ctx.new(edit_mode?: true)
+      ctx: Ctx.new(registry: :test, edit_mode?: true)
     }
 
     render_component(

@@ -9,15 +9,18 @@ defmodule Athanor.Editor.HandlersTest do
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   alias Athanor.Editor.Live, as: EditorLive
+  alias Athanor.Ctx
   alias Athanor.Editor.State
 
   # ─── fake consumer modules ─────────────────────────────────────────────
 
   defmodule SavingConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -25,7 +28,7 @@ defmodule Athanor.Editor.HandlersTest do
   end
 
   defmodule FailingConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -33,7 +36,7 @@ defmodule Athanor.Editor.HandlersTest do
   end
 
   defmodule SeedingConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -63,8 +66,7 @@ defmodule Athanor.Editor.HandlersTest do
   end
 
   setup do
-    Application.put_env(:athanor, :components, [FakeComponent, WithSeedComponent])
-    on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+    put_test_registry([FakeComponent, WithSeedComponent])
     :ok
   end
 
@@ -72,7 +74,7 @@ defmodule Athanor.Editor.HandlersTest do
 
   describe "do_add_component" do
     test "appends a new node with merged default_props at the root" do
-      state = State.new()
+      state = State.new(ctx: Ctx.new(registry: :test))
 
       new_state =
         EditorLive.do_add_component(state, SavingConsumer, "fake", %{}, mock_socket())
@@ -86,7 +88,7 @@ defmodule Athanor.Editor.HandlersTest do
     end
 
     test "consumer's seed_default_props/3 is invoked" do
-      state = State.new()
+      state = State.new(ctx: Ctx.new(registry: :test))
 
       new_state =
         EditorLive.do_add_component(state, SeedingConsumer, "with_seed", %{}, mock_socket())
@@ -96,7 +98,7 @@ defmodule Athanor.Editor.HandlersTest do
     end
 
     test "unknown type still adds a node with empty props (no crash)" do
-      state = State.new()
+      state = State.new(ctx: Ctx.new(registry: :test))
 
       new_state =
         EditorLive.do_add_component(state, SavingConsumer, "ghost", %{}, mock_socket())
@@ -112,7 +114,7 @@ defmodule Athanor.Editor.HandlersTest do
   describe "do_add_component_to_zone" do
     test "inserts new node into the named zone of the parent columns node" do
       state = %State{
-        State.new()
+        State.new(ctx: Ctx.new(registry: :test))
         | content: %{
             "content" => [
               %{
@@ -146,7 +148,10 @@ defmodule Athanor.Editor.HandlersTest do
     end
 
     test "clears column_picker even when insertion fails" do
-      state = %State{State.new() | column_picker: {"missing", "zone"}}
+      state = %State{
+        State.new(ctx: Ctx.new(registry: :test))
+        | column_picker: {"missing", "zone"}
+      }
 
       new_state =
         EditorLive.do_add_component_to_zone(
@@ -167,7 +172,7 @@ defmodule Athanor.Editor.HandlersTest do
   describe "do_remove_component" do
     test "removes the node from the tree" do
       state = %State{
-        State.new()
+        State.new(ctx: Ctx.new(registry: :test))
         | content: %{
             "content" => [
               %{"id" => "a", "type" => "fake", "props" => %{}},
@@ -184,7 +189,11 @@ defmodule Athanor.Editor.HandlersTest do
     end
 
     test "unknown id is a no-op" do
-      state = %State{State.new() | content: %{"content" => [%{"id" => "x"}]}}
+      state = %State{
+        State.new(ctx: Ctx.new(registry: :test))
+        | content: %{"content" => [%{"id" => "x"}]}
+      }
+
       new_state = EditorLive.do_remove_component(state, "ghost")
       assert new_state.content == state.content
     end
@@ -195,7 +204,7 @@ defmodule Athanor.Editor.HandlersTest do
   describe "do_move_component" do
     test "moves up" do
       state = %State{
-        State.new()
+        State.new(ctx: Ctx.new(registry: :test))
         | content: %{
             "content" => [
               %{"id" => "a", "type" => "fake", "props" => %{}},
@@ -210,7 +219,7 @@ defmodule Athanor.Editor.HandlersTest do
 
     test "moves down" do
       state = %State{
-        State.new()
+        State.new(ctx: Ctx.new(registry: :test))
         | content: %{
             "content" => [
               %{"id" => "a", "type" => "fake", "props" => %{}},
@@ -229,7 +238,7 @@ defmodule Athanor.Editor.HandlersTest do
   describe "do_dnd_drop palette → root" do
     test "inserts new component at the given root index" do
       state = %State{
-        State.new()
+        State.new(ctx: Ctx.new(registry: :test))
         | content: %{
             "content" => [
               %{"id" => "a", "type" => "fake", "props" => %{}},
@@ -258,7 +267,7 @@ defmodule Athanor.Editor.HandlersTest do
     end
 
     test "applies seed_default_props/3 from consumer" do
-      state = State.new()
+      state = State.new(ctx: Ctx.new(registry: :test))
 
       params = %{
         "source" => "palette",
@@ -284,7 +293,7 @@ defmodule Athanor.Editor.HandlersTest do
         ]
       }
 
-      state = %State{State.new() | content: content}
+      state = %State{State.new(ctx: Ctx.new(registry: :test)) | content: content}
 
       params = %{
         "source" => "tree",
@@ -309,7 +318,7 @@ defmodule Athanor.Editor.HandlersTest do
         ]
       }
 
-      state = %State{State.new() | content: content}
+      state = %State{State.new(ctx: Ctx.new(registry: :test)) | content: content}
 
       params = %{
         "source" => "tree",
@@ -339,7 +348,7 @@ defmodule Athanor.Editor.HandlersTest do
         ]
       }
 
-      state = %State{State.new() | content: content}
+      state = %State{State.new(ctx: Ctx.new(registry: :test)) | content: content}
 
       params = %{
         "source" => "tree",
@@ -361,7 +370,7 @@ defmodule Athanor.Editor.HandlersTest do
 
   describe "do_dnd_drop error paths" do
     test "unknown source returns state unchanged" do
-      state = State.new()
+      state = State.new(ctx: Ctx.new(registry: :test))
       params = %{"source" => "bogus"}
       assert EditorLive.do_dnd_drop(state, SavingConsumer, params, mock_socket()) == state
     end

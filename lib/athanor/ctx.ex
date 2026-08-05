@@ -14,6 +14,13 @@ defmodule Athanor.Ctx do
     importing app-specific modules. v1 keeps the fields with `nil`
     defaults; adapter behaviours land in a later step.
 
+  - **Registry scope**: `registry` names which `Athanor.Registry` a tree's
+    node types resolve against. `Athanor.Renderer` reads it on every dispatch,
+    so a host app can run several palettes (a page builder and a broadcast
+    overlay editor, say) without either being able to resolve the other's
+    components. Required wherever a tree is rendered — leaving it `nil` raises
+    rather than silently resolving nothing.
+
   - **Editor mode**: `edit_mode?`, `add_component_callback`, and
     `select_component_callback`. Set by the host LiveView when rendering
     inside the editor canvas. Container components (e.g.
@@ -42,6 +49,7 @@ defmodule Athanor.Ctx do
             api_token: nil,
             brand_id: nil,
             cart_id: nil,
+            registry: nil,
             asset_picker: nil,
             rich_text: nil,
             data_sources: %{},
@@ -57,6 +65,7 @@ defmodule Athanor.Ctx do
           api_token: String.t() | nil,
           brand_id: String.t() | nil,
           cart_id: String.t() | nil,
+          registry: atom() | nil,
           asset_picker: module() | nil,
           rich_text: module() | nil,
           data_sources: %{String.t() => module()},

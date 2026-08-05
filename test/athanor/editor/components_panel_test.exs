@@ -8,6 +8,8 @@ defmodule Athanor.Editor.ComponentsPanelTest do
   """
 
   use ExUnit.Case, async: false
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   import Phoenix.LiveViewTest
@@ -32,8 +34,7 @@ defmodule Athanor.Editor.ComponentsPanelTest do
   end
 
   setup do
-    Application.put_env(:athanor, :components, [FakeText, FakeImage])
-    on_exit(fn -> Application.put_env(:athanor, :components, []) end)
+    put_test_registry([FakeText, FakeImage])
     :ok
   end
 
@@ -77,7 +78,7 @@ defmodule Athanor.Editor.ComponentsPanelTest do
 
   defp render_panel(opts \\ []) do
     assigns = %{
-      ctx: opts[:ctx] || Ctx.new(edit_mode?: true),
+      ctx: opts[:ctx] || Ctx.new(registry: :test, edit_mode?: true),
       page_settings_component: opts[:page_settings_component],
       metadata: opts[:metadata] || %{}
     }

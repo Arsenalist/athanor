@@ -4,7 +4,9 @@ defmodule Athanor.Renderer do
 
   Iterates `tree["content"]`. For each node:
 
-  1. Resolves the component module via `Athanor.Registry.lookup/1`.
+  1. Resolves the component module via `Athanor.Registry.lookup/2`, scoped to
+     `ctx.registry` — so a tree can only ever resolve types belonging to the
+     palette it was authored in.
   2. If the module exports `render/3` (new `Athanor.Component` path), calls
      `module.render(:live, node, ctx)`.
   3. Otherwise dispatches via the configured `:legacy_adapter` — see
@@ -68,7 +70,7 @@ defmodule Athanor.Renderer do
   `Kernel.node/1`.
   """
   def node_component(assigns) do
-    module = Registry.lookup(assigns.node["type"])
+    module = Registry.lookup(assigns.ctx.registry, assigns.node["type"])
     assigns = assign(assigns, :module, module)
 
     cond do

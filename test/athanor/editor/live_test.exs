@@ -13,6 +13,8 @@ defmodule Athanor.Editor.LiveTest do
   """
 
   use ExUnit.Case, async: true
+
+  import Athanor.Test.RegistryHelpers
   use Phoenix.Component
 
   alias Athanor.Editor.Live, as: EditorLive
@@ -21,7 +23,7 @@ defmodule Athanor.Editor.LiveTest do
   # ─── fake consumer modules ─────────────────────────────────────────────
 
   defmodule MinimalConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
 
     @impl Athanor.Editor
     def load(_params, _session, _socket) do
@@ -38,7 +40,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule LoadingConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
 
     @impl Athanor.Editor
     def load(_params, _session, _socket) do
@@ -55,7 +57,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule ErrorConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:error, :not_found}
     @impl Athanor.Editor
@@ -63,7 +65,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule HeaderOverrideConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -74,7 +76,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule ActionsOverrideConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -87,7 +89,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule OutletOverrideConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -98,7 +100,7 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   defmodule AssetConsumer do
-    use Athanor.Editor.Live
+    use Athanor.Editor.Live, registry: :test
     @impl Athanor.Editor
     def load(_, _, _), do: {:ok, %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}}}
     @impl Athanor.Editor
@@ -112,6 +114,12 @@ defmodule Athanor.Editor.LiveTest do
   end
 
   # ─── macro mechanics ───────────────────────────────────────────────────
+
+  # Every editor surface reads a registry; suites that do not care which
+  # components exist still need the name to resolve.
+  setup do
+    put_test_registry([])
+  end
 
   describe "use Athanor.Editor.Live" do
     test "injects mount/3" do
@@ -355,7 +363,7 @@ defmodule Athanor.Editor.LiveTest do
         ctx_assigns: %{account_id: "a1", brand_id: "b1"}
       }
 
-      state = Athanor.Editor.Live.build_initial_state(load_result, %{})
+      state = Athanor.Editor.Live.build_initial_state(load_result, %{registry: :test})
 
       assert %State{} = state
       assert state.content == %{"content" => [%{"id" => "n1"}]}
@@ -369,7 +377,7 @@ defmodule Athanor.Editor.LiveTest do
       state =
         Athanor.Editor.Live.build_initial_state(
           %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}},
-          %{}
+          %{registry: :test}
         )
 
       assert is_function(state.ctx.add_component_callback, 1)
@@ -380,7 +388,7 @@ defmodule Athanor.Editor.LiveTest do
       state =
         Athanor.Editor.Live.build_initial_state(
           %{content: %{"content" => []}, metadata: %{}, ctx_assigns: %{}},
-          %{preview_viewport: :tablet, show_components_panel: false}
+          %{registry: :test, preview_viewport: :tablet, show_components_panel: false}
         )
 
       assert state.preview_viewport == :tablet
@@ -455,7 +463,7 @@ defmodule Athanor.Editor.LiveTest do
       __page_settings__: nil,
       content: %{"content" => []},
       metadata: %{},
-      ctx: Athanor.Ctx.new(edit_mode?: true),
+      ctx: Athanor.Ctx.new(registry: :test, edit_mode?: true),
       selected_component_id: nil,
       column_picker: nil,
       preview_viewport: :desktop,
@@ -480,7 +488,7 @@ defmodule Athanor.Editor.LiveTest do
         column_picker: opts[:column_picker],
         preview_viewport: :desktop,
         show_components_panel: true,
-        ctx: Athanor.Ctx.new()
+        ctx: Athanor.Ctx.new(registry: :test)
       }
     }
   end

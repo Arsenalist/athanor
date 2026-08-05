@@ -77,9 +77,14 @@ end
 
 ### 2. Register it
 
+Registries are named. A host app usually ends up with more than one palette,
+and neither should be able to see the other's components, so every registry
+has a name and every call site says which one it means.
+
 ```elixir
 # config/config.exs
-config :athanor, components: [MyApp.Components.Hero]
+config :athanor, :registries,
+  page_builder: [components: [MyApp.Components.Hero]]
 ```
 
 ### 3. Mount the editor
@@ -90,7 +95,9 @@ same map.
 
 ```elixir
 defmodule MyAppWeb.PageEditorLive do
-  use Athanor.Editor.Live
+  # `registry:` is required — it scopes the palette, the config panel and
+  # every type the canvas can resolve.
+  use Athanor.Editor.Live, registry: :page_builder
 
   @impl Athanor.Editor
   def load(%{"id" => id}, _session, _socket) do
@@ -135,7 +142,7 @@ defmodule MyAppWeb.PageLive do
     ~H"""
     <Athanor.Renderer.tree
       tree={@page.editor_content}
-      ctx={Athanor.Ctx.new()}
+      ctx={Athanor.Ctx.new(registry: :page_builder)}
       edit_mode={false}
     />
     """
@@ -168,6 +175,19 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 Hooks use native HTML5 DnD — no JS dependency.
+
+`AthanorDropZone` is reusable outside the editor. Three data attributes
+adapt it:
+
+| Attribute | Default | Purpose |
+|---|---|---|
+| `data-athanor-drop-event` | `athanor:dnd_drop` | LiveView event pushed on drop |
+| `data-athanor-drop-axis` | `y` | `x` for a row of slots — insertion index and the drop indicator follow the cursor horizontally |
+| `data-athanor-drop-index` | (on) | `"false"` for a single-slot zone: no index is computed or sent |
+
+Anything a drag source puts in the `dataTransfer` payload beyond
+`source` / `type` / `node_id` is passed through to the pushed event
+untouched, so a host can carry its own fields without patching the hook.
 
 ## Concepts
 

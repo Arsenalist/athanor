@@ -6,6 +6,7 @@ defmodule Athanor.Editor.Live do
 
       defmodule MyApp.PageBuilderLive do
         use Athanor.Editor.Live,
+          registry: :page_builder,                     # required
           page_settings_component: MyApp.PageSettings  # optional
 
         @impl Athanor.Editor
@@ -63,6 +64,17 @@ defmodule Athanor.Editor.Live do
   # ─── __using__/1 macro ─────────────────────────────────────────────────
 
   defmacro __using__(opts \\ []) do
+    # A registry is required, not defaulted: an editor that silently picked
+    # "the" registry would be exactly the ambiguity named registries exist to
+    # remove. Raising here makes it a compile error in the consumer, not a
+    # mystery empty palette at runtime.
+    unless Keyword.has_key?(opts, :registry) do
+      raise ArgumentError,
+            "use Athanor.Editor.Live requires a `registry:` option naming the " <>
+              "Athanor registry this editor works in, e.g. `registry: :page_builder`. " <>
+              "Configure it under `config :athanor, :registries`."
+    end
+
     quote location: :keep, bind_quoted: [opts: opts] do
       # Phoenix.LiveView's own __using__ already runs `use Phoenix.Component`
       # internally — an explicit second call here duplicated its
@@ -147,6 +159,10 @@ defmodule Athanor.Editor.Live do
       assigns
       |> assign(:consumer, consumer)
       |> assign(:page_settings, page_settings)
+      # The ctx is where the registry already lives (build_initial_state puts
+      # the editor's `registry:` option there); reading it back here keeps one
+      # source of truth instead of a parallel assign.
+      |> assign(:registry, assigns.ctx.registry)
       |> assign(:header_rendered, header_rendered)
       |> assign(:actions_rendered, actions_rendered)
       |> assign(:outlet_rendered, outlet_rendered)
@@ -194,7 +210,7 @@ defmodule Athanor.Editor.Live do
       </:sidebar_right>
 
       <:modals>
-        <Athanor.Editor.zone_picker_modal column_picker={@column_picker} />
+        <Athanor.Editor.zone_picker_modal column_picker={@column_picker} registry={@registry} />
         {@outlet_rendered}
       </:modals>
     </Athanor.Editor.shell>
@@ -271,7 +287,7 @@ defmodule Athanor.Editor.Live do
   @doc false
   def mount(consumer_module, params, session, socket) do
     opts = consumer_opts(consumer_module)
-    warn_if_registered(Map.get(opts, :page_settings_component))
+    warn_if_registered(Map.get(opts, :page_settings_component), Map.fetch!(opts, :registry))
 
     case consumer_module.load(params, session, socket) do
       {:ok, load_result} ->
@@ -316,23 +332,28 @@ defmodule Athanor.Editor.Live do
   end
 
   @doc """
-  Emit a one-time warning if `page_settings_component` is also listed in
-  `config :athanor, :components`. A page-settings module shouldn't show
-  up in the palette — registering it would pollute the components panel
-  with a "Page Settings" entry that, if dropped onto the canvas, would
-  not render anything (it has no `render/3`).
+  Emit a warning if `page_settings_component` is also a component of the
+  editor's own registry. A page-settings module shouldn't show up in the
+  palette — registering it would pollute the components panel with a "Page
+  Settings" entry that, if dropped onto the canvas, would not render anything
+  (it has no `render/3`).
+
+  Scoped to this editor's registry: the same module appearing in some *other*
+  registry is not a problem, and warning about it would be noise.
 
   Called from `mount/4`; also publicly callable for tests.
   """
-  def warn_if_registered(nil), do: :ok
+  def warn_if_registered(module, registry \\ nil)
 
-  def warn_if_registered(module) when is_atom(module) do
-    if module in Athanor.Registry.all() do
+  def warn_if_registered(nil, _registry), do: :ok
+
+  def warn_if_registered(module, registry) when is_atom(module) do
+    if module in Athanor.Registry.all(registry) do
       Logger.warning(fn ->
         "Athanor.Editor: page_settings_component (#{inspect(module)}) is also " <>
-          "registered in Athanor.Registry. Remove it from `config :athanor, " <>
-          ":components` — page-settings components should not appear in the " <>
-          "components palette."
+          "registered in the #{inspect(registry)} Athanor registry. Remove it " <>
+          "from that registry's `:components` — page-settings components should " <>
+          "not appear in the components palette."
       end)
     end
 
@@ -488,6 +509,10 @@ defmodule Athanor.Editor.Live do
   @doc false
   def build_initial_state(load_result, opts) do
     ctx_extras = %{
+      # The editor's registry is authoritative: a consumer's `ctx_assigns`
+      # cannot point the canvas at a different palette than the one the
+      # editor's palette and config panel are reading.
+      registry: Map.fetch!(opts, :registry),
       edit_mode?: true,
       add_component_callback: fn _zone ->
         Phoenix.LiveView.JS.push("show_zone_picker")
@@ -546,7 +571,7 @@ defmodule Athanor.Editor.Live do
 
   @doc false
   def do_add_component(%State{} = state, consumer_module, type, _params, socket) do
-    new_component = build_component(consumer_module, type, socket)
+    new_component = build_component(consumer_module, type, state, socket)
 
     case Tree.insert(state.content, :root, new_component) do
       {:ok, updated} ->
@@ -566,7 +591,7 @@ defmodule Athanor.Editor.Live do
         type,
         socket
       ) do
-    new_component = build_component(consumer_module, type, socket)
+    new_component = build_component(consumer_module, type, state, socket)
 
     case Tree.insert(state.content, {parent_id, zone_name}, new_component) do
       {:ok, updated} ->
@@ -608,7 +633,7 @@ defmodule Athanor.Editor.Live do
     case params["source"] do
       "palette" ->
         type = params["type"]
-        new_component = build_component(consumer_module, type, socket)
+        new_component = build_component(consumer_module, type, state, socket)
 
         case Tree.insert(state.content, target, new_component, at: {:index, index}) do
           {:ok, updated} ->
@@ -784,9 +809,12 @@ defmodule Athanor.Editor.Live do
 
   # ─── build_component ───────────────────────────────────────────────────
 
-  defp build_component(consumer_module, type, socket) do
+  # The registry comes off the editor's own state, not the socket: the state's
+  # ctx is built from the required `registry:` option, so a component can never
+  # be minted against a palette other than the one the editor declares.
+  defp build_component(consumer_module, type, %State{ctx: ctx}, socket) do
     merged_props =
-      case Athanor.Registry.lookup(type) do
+      case Athanor.Registry.lookup(ctx && ctx.registry, type) do
         nil ->
           %{}
 
