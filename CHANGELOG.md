@@ -11,6 +11,19 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.11] - 2026-09-21
+
+### Fixed
+
+- **`Columns` no longer collapses its zones on a phone.** The
+  `vertical_align` prop rendered an unprefixed `items-*` class on a row
+  that is `flex-col` below `md`, where `align-items` runs along the
+  horizontal axis — so every zone shrank to its content width instead of
+  filling the screen, and a stacked column came out a fraction of its
+  intended width. The class is now `md:`-scoped, matching the axis the
+  prop is named for. Affects every `columns` node at mobile widths; no
+  API or storage change.
+
 ## [0.1.0-beta.10] - 2026-08-04
 
 ### Changed (BREAKING)
@@ -216,7 +229,9 @@ during the beta window.
   Athanor.Component module as the `:page_settings_component` opt and
   the library auto-renders its `fields/0` at the top of the sidebar.
 
-[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.9...HEAD
+[Unreleased]: https://github.com/Arsenalist/athanor/compare/v0.1.0-beta.11...HEAD
+[0.1.0-beta.11]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.11
+[0.1.0-beta.10]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.10
 [0.1.0-beta.9]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.9
 [0.1.0-beta.3]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.3
 [0.1.0-beta.2]: https://github.com/Arsenalist/athanor/releases/tag/v0.1.0-beta.2

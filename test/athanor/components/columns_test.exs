@@ -233,6 +233,30 @@ defmodule Athanor.Components.ColumnsTest do
       html = render_live(node, Ctx.new(edit_mode?: false))
       assert html =~ "@container"
     end
+
+    test "vertical alignment only applies to the md row, so stacked zones keep full width" do
+      for align <- ~w(top center bottom stretch) do
+        node = %{
+          "id" => "c1",
+          "type" => "columns",
+          "props" => %{
+            "num_zones" => "2",
+            "zone_names" => ["one", "two"],
+            "zones" => %{"one" => [], "two" => []},
+            "vertical_align" => align,
+            "width_distribution" => "equal"
+          }
+        }
+
+        html = render_live(node, Ctx.new(edit_mode?: false))
+
+        # Below md the row is flex-col, where align-items runs along the
+        # HORIZONTAL axis — an unprefixed items-* there shrinks every zone to
+        # its content width instead of filling the screen.
+        assert html =~ "md:items-"
+        refute html =~ ~r/\sitems-(start|center|end|stretch)\b/
+      end
+    end
   end
 
   describe "render(:live, node, ctx) — editor canvas (edit_mode? = true)" do

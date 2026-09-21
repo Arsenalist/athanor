@@ -210,7 +210,7 @@ defmodule Athanor.Components.Columns do
 
     ~H"""
     <div>
-      <div class={"flex gap-4 flex-col md:flex-row w-full #{@align_class}"}>
+      <div class={"flex gap-4 flex-col md:flex-row w-full md:#{@align_class}"}>
         <div
           :for={{zone_name, idx} <- Enum.with_index(@zone_names)}
           id={if @edit_mode?, do: "athanor-zone-#{@node_id}-#{zone_name}", else: nil}
