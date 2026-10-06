@@ -11,6 +11,8 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+## [0.1.0-beta.12] - 2026-10-06
+
 ### Added
 
 - **Reorder controls.** The config-panel header gains move-to-top / up /
