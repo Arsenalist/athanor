@@ -11,6 +11,32 @@ changes; the minor version is bumped for each one. See
 
 ## [Unreleased]
 
+### Added
+
+- **Reorder controls.** The config-panel header gains move-to-top / up /
+  down / move-to-bottom buttons and the canvas chrome gains up / down,
+  all driving the existing `move_component` event. `Tree.move/3` accepts
+  `:top` and `:bottom`; `Tree.position/2` reports a node's index among its
+  siblings so controls that would be no-ops are not rendered. After a move
+  the editor pushes `athanor:scroll_to` and `athanor.js` scrolls the moved
+  node into view.
+- **Formatting tab for field-less components.** A component whose
+  `fields/0` is `[]` still mounts `AutoEditorForm`, so the shared
+  Formatting tab is available; the Component tab shows a placeholder.
+
+### Changed
+
+- **Canvas chrome palette is fixed, not themed.** Configure / move buttons
+  and the selection frame use `.athanor-chrome-*` classes styled by the
+  stylesheet `athanor.js` injects, instead of DaisyUI tokens. Hosts that
+  re-theme the canvas subtree for brand preview (overriding `--color-*`)
+  no longer bleed into the chrome and make it unreadable. The chrome also
+  stays visible while its component is selected, not only on hover.
+- **Drag-and-drop on long pages.** `AthanorDropZone` autoscrolls the
+  nearest scroll container while the pointer is near its edge, and the
+  insertion slot is chosen by the nearest item *edge* rather than its
+  midpoint, so a small component can be dropped above a tall one.
+
 ## [0.1.0-beta.11] - 2026-09-21
 
 ### Fixed

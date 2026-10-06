@@ -231,6 +231,25 @@ defmodule Athanor.Editor.HandlersTest do
       new_state = EditorLive.do_move_component(state, "a", "down")
       assert [%{"id" => "b"}, %{"id" => "a"}] = new_state.content["content"]
     end
+
+    test "moves to top and bottom" do
+      state = %State{
+        State.new(ctx: Ctx.new(registry: :test))
+        | content: %{
+            "content" => [
+              %{"id" => "a", "type" => "fake", "props" => %{}},
+              %{"id" => "b", "type" => "fake", "props" => %{}},
+              %{"id" => "c", "type" => "fake", "props" => %{}}
+            ]
+          }
+      }
+
+      top = EditorLive.do_move_component(state, "c", "top")
+      assert Enum.map(top.content["content"], & &1["id"]) == ~w(c a b)
+
+      bottom = EditorLive.do_move_component(state, "a", "bottom")
+      assert Enum.map(bottom.content["content"], & &1["id"]) == ~w(b c a)
+    end
   end
 
   # ─── do_dnd_drop ───────────────────────────────────────────────────────

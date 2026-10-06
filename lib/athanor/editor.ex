@@ -325,7 +325,7 @@ defmodule Athanor.Editor do
           class="flex flex-col gap-3"
         >
           <div
-            :for={node <- @nodes}
+            :for={{node, idx} <- Enum.with_index(@nodes)}
             id={"athanor-canvas-item-" <> node["id"]}
             phx-hook="AthanorDragSource"
             draggable="true"
@@ -335,34 +335,48 @@ defmodule Athanor.Editor do
             class="group/canvas-item relative"
             data-testid="athanor-canvas-item"
           >
+            <%!-- Canvas chrome uses the fixed `.athanor-chrome-*` palette
+            (injected by athanor.js), never theme tokens: hosts re-theme the
+            canvas subtree for brand preview and the chrome must not follow. --%>
             <div
               :if={@ctx.select_component_callback != nil}
-              class="absolute -top-3 right-2 z-10 opacity-0 group-hover/canvas-item:opacity-100 focus-within:opacity-100 transition-opacity"
+              data-testid={"athanor-canvas-chrome-" <> node["id"]}
+              class={[
+                "absolute -top-3 right-2 z-10 flex items-center gap-1 group-hover/canvas-item:opacity-100 focus-within:opacity-100 transition-opacity",
+                if(node["id"] == @selected_component_id, do: "opacity-100", else: "opacity-0")
+              ]}
             >
+              <.move_button
+                :if={idx > 0}
+                direction="up"
+                icon="fa-arrow-up"
+                node_id={node["id"]}
+                testid={"athanor-canvas-move-up-" <> node["id"]}
+              />
+              <.move_button
+                :if={idx < length(@nodes) - 1}
+                direction="down"
+                icon="fa-arrow-down"
+                node_id={node["id"]}
+                testid={"athanor-canvas-move-down-" <> node["id"]}
+              />
               <button
                 type="button"
                 data-testid={"athanor-canvas-configure-" <> node["id"]}
                 phx-click={@ctx.select_component_callback.(node["id"])}
                 phx-value-id={node["id"]}
                 aria-label={"Configure component " <> node["id"]}
-                class={[
-                  "h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-medium shadow-sm border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-                  if(node["id"] == @selected_component_id,
-                    do: "bg-primary text-primary-content border-primary",
-                    else: "bg-base-100 text-base-content border-base-300 hover:bg-base-200"
-                  )
-                ]}
+                data-selected={if(node["id"] == @selected_component_id, do: "true")}
+                class="athanor-chrome-btn h-8 px-3 inline-flex items-center gap-1.5 rounded-md text-xs font-medium shadow-sm border cursor-pointer focus-visible:outline-none focus-visible:ring-2"
               >
                 <i class="fas fa-cog text-[10px]" aria-hidden="true"></i> Configure
               </button>
             </div>
-            <div class={[
-              "rounded-lg border-2 p-3 bg-base-100 transition-colors",
-              if(node["id"] == @selected_component_id,
-                do: "border-primary",
-                else: "border-transparent group-hover/canvas-item:border-base-300"
-              )
-            ]}>
+            <div
+              data-testid={"athanor-canvas-frame-" <> node["id"]}
+              data-selected={if(node["id"] == @selected_component_id, do: "true")}
+              class="athanor-chrome-frame rounded-lg border-2 p-3 bg-base-100 transition-colors"
+            >
               <Renderer.node_component
                 node={node}
                 ctx={@ctx}
@@ -375,6 +389,29 @@ defmodule Athanor.Editor do
         </div>
       <% end %>
     </div>
+    """
+  end
+
+  # One of the reorder buttons: pushes the library's `move_component` event.
+  attr(:direction, :string, required: true, values: ~w(up down top bottom))
+  attr(:icon, :string, required: true)
+  attr(:node_id, :string, required: true)
+  attr(:testid, :string, required: true)
+
+  defp move_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      data-testid={@testid}
+      phx-click="move_component"
+      phx-value-id={@node_id}
+      phx-value-direction={@direction}
+      aria-label={"Move component " <> @direction}
+      title={"Move " <> @direction}
+      class="athanor-chrome-btn h-8 w-8 inline-flex items-center justify-center rounded-md shadow-sm border cursor-pointer focus-visible:outline-none focus-visible:ring-2"
+    >
+      <i class={["fas", @icon, "text-[10px]"]} aria-hidden="true"></i>
+    </button>
     """
   end
 
@@ -501,7 +538,18 @@ defmodule Athanor.Editor do
         end
       end
 
-    assigns = assign(assigns, :node, node)
+    # Hide reorder controls that would be no-ops (already first / last).
+    {can_up?, can_down?} =
+      case node && Tree.position(assigns.content, node["id"]) do
+        {:ok, {idx, count}} -> {idx > 0, idx < count - 1}
+        _ -> {false, false}
+      end
+
+    assigns =
+      assigns
+      |> assign(:node, node)
+      |> assign(:can_up?, can_up?)
+      |> assign(:can_down?, can_down?)
 
     ~H"""
     <div :if={@node} data-testid="component-config" class="flex flex-col">
@@ -511,6 +559,11 @@ defmodule Athanor.Editor do
           {component_label(@ctx.registry, @node)}
         </h2>
         <div class="ml-auto flex items-center gap-1">
+          <.panel_move_button :if={@can_up?} direction="top" icon="fa-angles-up" node_id={@node["id"]} />
+          <.panel_move_button :if={@can_up?} direction="up" icon="fa-arrow-up" node_id={@node["id"]} />
+          <.panel_move_button :if={@can_down?} direction="down" icon="fa-arrow-down" node_id={@node["id"]} />
+          <.panel_move_button :if={@can_down?} direction="bottom" icon="fa-angles-down" node_id={@node["id"]} />
+          <span :if={@can_up? or @can_down?} class="w-px h-5 bg-base-300/60 mx-1" aria-hidden="true"></span>
           <button
             type="button"
             data-testid="component-config-delete"
@@ -536,6 +589,29 @@ defmodule Athanor.Editor do
         <.config_dispatch node={@node} ctx={@ctx} />
       </div>
     </div>
+    """
+  end
+
+  # Borderless variant of move_button for the config-panel header, matching
+  # the Delete/Close icon buttons beside it.
+  attr(:direction, :string, required: true, values: ~w(up down top bottom))
+  attr(:icon, :string, required: true)
+  attr(:node_id, :string, required: true)
+
+  defp panel_move_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      data-testid={"component-config-move-" <> @direction}
+      phx-click="move_component"
+      phx-value-id={@node_id}
+      phx-value-direction={@direction}
+      aria-label={"Move component " <> @direction}
+      title={"Move " <> @direction}
+      class="h-8 w-8 rounded-md flex items-center justify-center text-base-content/40 hover:bg-base-200 hover:text-base-content cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      <i class={["fas", @icon, "text-xs"]} aria-hidden="true"></i>
+    </button>
     """
   end
 
@@ -565,6 +641,11 @@ defmodule Athanor.Editor do
 
         function_exported?(mod, :editor_form, 0) and mod.editor_form() != nil ->
           {:editor_form, mod.editor_form()}
+
+        # No fields of its own, but the Formatting tab still applies — any
+        # component may wrap itself in `Formatting.apply`.
+        function_exported?(mod, :fields, 0) ->
+          {:fields, mod}
 
         true ->
           :none

@@ -83,6 +83,13 @@ defmodule Athanor.Fields do
 
     ~H"""
     <div data-testid="athanor-fields">
+      <div
+        :if={@builtin_fields == [] and @custom_fields == []}
+        class="text-sm opacity-60"
+        data-testid="component-no-config"
+      >
+        No settings for this component — see the Formatting tab.
+      </div>
       <%= if @builtin_fields != [] do %>
         <form
           phx-change="update_props"

@@ -49,28 +49,50 @@ const PAYLOAD_MIME = "application/x-athanor-dnd"
 const DROP_INDICATOR_CLASS = "athanor-drop-target"
 const INDICATOR_ATTR = "data-athanor-indicator"
 const STYLE_ELEMENT_ID = "athanor-dnd-styles"
+// Editor-chrome accent (blue-600). The chrome palette is fixed, never the
+// host's theme tokens: hosts re-theme the canvas subtree for brand preview,
+// and chrome that followed the brand's colours became unreadable.
+const CHROME_ACCENT = "#2563eb"
 
-// Inject the minimal CSS the hooks rely on (drop-zone highlight, source
-// drag-ghost opacity, insertion-line indicator). Idempotent — safe to
-// call from every hook mount.
+// Inject the minimal CSS the hooks rely on (canvas chrome palette, drop-zone
+// highlight, source drag-ghost opacity, insertion-line indicator).
+// Idempotent — safe to call from every hook mount.
 function ensureStylesInjected() {
   if (document.getElementById(STYLE_ELEMENT_ID)) return
   const style = document.createElement("style")
   style.id = STYLE_ELEMENT_ID
   style.textContent = `
     .athanor-dragging { opacity: 0.5; }
+    .athanor-chrome-btn {
+      background: #ffffff;
+      color: #1e293b;
+      border-color: #cbd5e1;
+    }
+    .athanor-chrome-btn:hover { background: #f1f5f9; }
+    .athanor-chrome-btn:focus-visible { box-shadow: 0 0 0 2px ${CHROME_ACCENT}66; }
+    .athanor-chrome-btn[data-selected="true"] {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+    .athanor-chrome-frame { border-color: transparent; }
+    [data-athanor-drop-item]:hover > .athanor-chrome-frame { border-color: #cbd5e1; }
+    .athanor-chrome-frame[data-selected="true"],
+    [data-athanor-drop-item]:hover > .athanor-chrome-frame[data-selected="true"] {
+      border-color: ${CHROME_ACCENT};
+    }
     .${DROP_INDICATOR_CLASS} {
-      outline: 2px dashed var(--color-primary, #3b82f6);
+      outline: 2px dashed ${CHROME_ACCENT};
       outline-offset: 2px;
-      background-color: color-mix(in srgb, var(--color-primary, #3b82f6) 6%, transparent);
+      background-color: ${CHROME_ACCENT}0f;
     }
     [${INDICATOR_ATTR}] {
       position: absolute;
       left: 0;
       right: 0;
       height: 3px;
-      background: var(--color-primary, #3b82f6);
-      box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary, #3b82f6) 35%, transparent);
+      background: ${CHROME_ACCENT};
+      box-shadow: 0 0 0 1px ${CHROME_ACCENT}59;
       border-radius: 2px;
       pointer-events: none;
       transform: translateY(-1.5px);
@@ -85,7 +107,7 @@ function ensureStylesInjected() {
       width: 8px;
       height: 8px;
       border-radius: 9999px;
-      background: var(--color-primary, #3b82f6);
+      background: ${CHROME_ACCENT};
       transform: translateY(-50%);
     }
     [${INDICATOR_ATTR}]::before { left: -4px; }
@@ -138,6 +160,7 @@ const AthanorDropZone = {
       if (indexingEnabled(this.el)) {
         updateIndicator(this.el, this.indicator, e, dropAxis(this.el))
       }
+      autoscroll(this.el, e)
     })
 
     this.el.addEventListener("dragleave", (e) => {
@@ -280,16 +303,85 @@ function computeDropIndex(zoneEl, event, axis) {
   return insertionIndex(items, event, axis)
 }
 
+// The slot is decided by the nearest item *edge* to the cursor, not by
+// each item's midpoint: a tall component's midpoint can sit off-screen,
+// which made "drop above the big hero" impossible without scrolling past
+// it first.
 function insertionIndex(items, event, axis) {
   const position = axis === "x" ? event.clientX : event.clientY
+  let best = items.length
+  let bestDistance = Infinity
 
-  for (let i = 0; i < items.length; i++) {
-    const rect = items[i].getBoundingClientRect()
-    const midpoint =
-      axis === "x" ? rect.left + rect.width / 2 : rect.top + rect.height / 2
-    if (position < midpoint) return i
+  items.forEach((item, i) => {
+    const rect = item.getBoundingClientRect()
+    const start = axis === "x" ? rect.left : rect.top
+    const end = axis === "x" ? rect.right : rect.bottom
+    const toStart = Math.abs(position - start)
+    const toEnd = Math.abs(position - end)
+    if (toStart < bestDistance) {
+      bestDistance = toStart
+      best = i
+    }
+    if (toEnd < bestDistance) {
+      bestDistance = toEnd
+      best = i + 1
+    }
+  })
+
+  return best
+}
+
+// Native HTML5 drag does not reliably scroll an overflow container while
+// the pointer is near its edge (Safari never does). Nudge the nearest
+// scrollable ancestor ourselves, faster the closer the pointer is to the
+// edge.
+const AUTOSCROLL_EDGE_PX = 64
+const AUTOSCROLL_MAX_STEP = 24
+
+function autoscroll(zoneEl, event) {
+  const container = scrollParent(zoneEl)
+  if (!container) return
+
+  const rect =
+    container === document.scrollingElement
+      ? { top: 0, bottom: window.innerHeight }
+      : container.getBoundingClientRect()
+
+  const fromTop = event.clientY - rect.top
+  const fromBottom = rect.bottom - event.clientY
+
+  if (fromTop < AUTOSCROLL_EDGE_PX) {
+    container.scrollTop -= stepFor(fromTop)
+  } else if (fromBottom < AUTOSCROLL_EDGE_PX) {
+    container.scrollTop += stepFor(fromBottom)
   }
-  return items.length
+}
+
+function stepFor(distance) {
+  const ratio = 1 - Math.max(0, distance) / AUTOSCROLL_EDGE_PX
+  return Math.ceil(ratio * AUTOSCROLL_MAX_STEP)
+}
+
+function scrollParent(el) {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node)
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      node.scrollHeight > node.clientHeight
+    ) {
+      return node
+    }
+  }
+  return document.scrollingElement
+}
+
+// Scroll-follow after a server-side reorder (`move_component`): the editor
+// pushes `athanor:scroll_to` with the moved node's id once the patch lands.
+if (typeof window !== "undefined") {
+  window.addEventListener("phx:athanor:scroll_to", (e) => {
+    const el = document.getElementById(`athanor-canvas-item-${e.detail.id}`)
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  })
 }
 
 export const AthanorHooks = {

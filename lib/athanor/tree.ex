@@ -415,8 +415,9 @@ defmodule Athanor.Tree do
 
   @doc """
   Swap the node identified by `id` with its previous (`:up`) or next
-  (`:down`) sibling inside the same containing list (root content or a
-  specific zone). Moving past a boundary (first/last) is a no-op.
+  (`:down`) sibling, or send it to the first (`:top`) / last (`:bottom`)
+  position, inside the same containing list (root content or a specific
+  zone). Moving past a boundary (first/last) is a no-op.
 
   Returns `{:ok, new_tree}` or `{:error, :not_found}` if the id is absent.
 
@@ -431,7 +432,7 @@ defmodule Athanor.Tree do
       ["b", "a"]
   """
   def move(tree, id, direction)
-      when is_map(tree) and is_binary(id) and direction in [:up, :down] do
+      when is_map(tree) and is_binary(id) and direction in [:up, :down, :top, :bottom] do
     case move_in_list(tree["content"] || [], id, direction) do
       {:found, new_list} ->
         {:ok, Map.put(tree, "content", new_list)}
@@ -454,23 +455,46 @@ defmodule Athanor.Tree do
           case direction do
             :up -> max(0, idx - 1)
             :down -> min(length(list) - 1, idx + 1)
+            :top -> 0
+            :bottom -> length(list) - 1
           end
 
         if new_idx == idx do
           {:found, list}
         else
-          {:found, swap_at(list, idx, new_idx)}
+          {node, rest} = List.pop_at(list, idx)
+          {:found, List.insert_at(rest, new_idx, node)}
         end
     end
   end
 
-  defp swap_at(list, i, j) do
-    a = Enum.at(list, i)
-    b = Enum.at(list, j)
+  @doc """
+  Where `id` sits among its siblings: `{:ok, {index, sibling_count}}` for the
+  containing list (root content or a specific zone), `:error` if absent.
+  Lets the editor hide reorder controls that would be no-ops.
+  """
+  def position(tree, id) when is_map(tree) and is_binary(id) do
+    case containing_list(tree["content"] || [], id) do
+      nil -> :error
+      list -> {:ok, {Enum.find_index(list, &(&1["id"] == id)), length(list)}}
+    end
+  end
 
-    list
-    |> List.replace_at(i, b)
-    |> List.replace_at(j, a)
+  # The list (root content or a zone's children) that directly holds `id`.
+  defp containing_list(list, id) do
+    if Enum.any?(list, &(&1["id"] == id)) do
+      list
+    else
+      Enum.find_value(list, fn node ->
+        case get_in(node, ["props", "zones"]) do
+          zones when is_map(zones) ->
+            Enum.find_value(zones, fn {_, kids} -> containing_list(kids, id) end)
+
+          _ ->
+            nil
+        end
+      end)
+    end
   end
 
   # Recursively search every zone for a list containing `id` and apply

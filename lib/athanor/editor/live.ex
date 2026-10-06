@@ -410,7 +410,12 @@ defmodule Athanor.Editor.Live do
   end
 
   def handle_event(_consumer, "move_component", %{"id" => id, "direction" => dir}, socket) do
-    {:noreply, update_state(socket, &do_move_component(&1, id, dir))}
+    # Scroll-follow: a move to top/bottom otherwise leaves the user staring
+    # at where the node used to be.
+    {:noreply,
+     socket
+     |> update_state(&do_move_component(&1, id, dir))
+     |> Phoenix.LiveView.push_event("athanor:scroll_to", %{id: id})}
   end
 
   def handle_event(consumer, "athanor:dnd_drop", params, socket) do
@@ -678,7 +683,13 @@ defmodule Athanor.Editor.Live do
 
   @doc false
   def do_move_component(%State{} = state, id, direction) do
-    dir = if direction == "up", do: :up, else: :down
+    dir =
+      case direction do
+        "up" -> :up
+        "top" -> :top
+        "bottom" -> :bottom
+        _ -> :down
+      end
 
     case Tree.move(state.content, id, dir) do
       {:ok, updated} -> %{state | content: updated}

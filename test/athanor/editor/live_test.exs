@@ -72,7 +72,7 @@ defmodule Athanor.Editor.LiveTest do
     def save(_, _), do: {:ok, :saved}
 
     @impl Athanor.Editor
-    def render_header(assigns), do: ~H"<div data-testid='custom-header'>CUSTOM</div>"
+    def render_header(assigns), do: ~H"<div data-testid=\"custom-header\">CUSTOM</div>"
   end
 
   defmodule ActionsOverrideConsumer do
@@ -84,7 +84,7 @@ defmodule Athanor.Editor.LiveTest do
 
     @impl Athanor.Editor
     def render_top_bar_actions(assigns) do
-      ~H"<div data-testid='custom-actions'>BTNS</div>"
+      ~H"<div data-testid=\"custom-actions\">BTNS</div>"
     end
   end
 
@@ -96,7 +96,7 @@ defmodule Athanor.Editor.LiveTest do
     def save(_, _), do: {:ok, :saved}
 
     @impl Athanor.Editor
-    def render_outlet(assigns), do: ~H"<div data-testid='custom-outlet'>PICKER</div>"
+    def render_outlet(assigns), do: ~H"<div data-testid=\"custom-outlet\">PICKER</div>"
   end
 
   defmodule AssetConsumer do
@@ -325,6 +325,32 @@ defmodule Athanor.Editor.LiveTest do
         EditorLive.handle_event(MinimalConsumer, "remove_component", %{"id" => "n1"}, base)
 
       assert s3.assigns.asset_request == nil
+    end
+  end
+
+  describe "handle_event move_component" do
+    test "reorders and pushes athanor:scroll_to for the moved node" do
+      socket =
+        mock_socket(
+          content: %{
+            "content" => [
+              %{"id" => "a", "type" => "x", "props" => %{}},
+              %{"id" => "b", "type" => "x", "props" => %{}}
+            ]
+          }
+        )
+
+      {:noreply, s} =
+        EditorLive.handle_event(
+          MinimalConsumer,
+          "move_component",
+          %{"id" => "b", "direction" => "top"},
+          socket
+        )
+
+      assert Enum.map(s.assigns.content["content"], & &1["id"]) == ~w(b a)
+
+      assert [["athanor:scroll_to", %{id: "b"}]] = s.private.live_temp[:push_events]
     end
   end
 

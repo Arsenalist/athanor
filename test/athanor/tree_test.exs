@@ -142,6 +142,24 @@ defmodule Athanor.TreeTest do
     end
   end
 
+  describe "position/2" do
+    test "root node: {index, sibling_count}" do
+      tree = make_root_tree(~w(a b c))
+      assert Tree.position(tree, "a") == {:ok, {0, 3}}
+      assert Tree.position(tree, "c") == {:ok, {2, 3}}
+    end
+
+    test "nested node is positioned within its zone" do
+      tree = load_fixture("two_columns_simple")
+      assert Tree.position(tree, "00000000-0000-0000-0000-000000000032") == {:ok, {1, 2}}
+      assert Tree.position(tree, "00000000-0000-0000-0000-000000000033") == {:ok, {0, 1}}
+    end
+
+    test "unknown id" do
+      assert Tree.position(make_root_tree(~w(a)), "ghost") == :error
+    end
+  end
+
   describe "move/3" do
     test ":up swaps with previous sibling at root" do
       tree = make_root_tree(~w(a b c))
@@ -165,6 +183,30 @@ defmodule Athanor.TreeTest do
       tree = make_root_tree(~w(a b c))
       {:ok, t2} = Tree.move(tree, "c", :down)
       assert ids_at_root(t2) == ~w(a b c)
+    end
+
+    test ":top moves a root node to the front" do
+      tree = make_root_tree(~w(a b c d))
+      {:ok, t2} = Tree.move(tree, "c", :top)
+      assert ids_at_root(t2) == ~w(c a b d)
+    end
+
+    test ":bottom moves a root node to the end" do
+      tree = make_root_tree(~w(a b c d))
+      {:ok, t2} = Tree.move(tree, "b", :bottom)
+      assert ids_at_root(t2) == ~w(a c d b)
+    end
+
+    test ":top within a zone stays inside that zone" do
+      tree = load_fixture("two_columns_simple")
+      {:ok, t2} = Tree.move(tree, "00000000-0000-0000-0000-000000000032", :top)
+
+      {:ok, cols} = Tree.find(t2, "00000000-0000-0000-0000-000000000030")
+
+      assert Enum.map(cols["props"]["zones"]["one"], & &1["id"]) == [
+               "00000000-0000-0000-0000-000000000032",
+               "00000000-0000-0000-0000-000000000031"
+             ]
     end
 
     test "sole child is a no-op in either direction" do
